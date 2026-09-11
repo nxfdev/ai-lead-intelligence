@@ -89,7 +89,7 @@ User: We're specifically built for dental clinics, so we understand their unique
 const FAKE_LEADS = [
   {
     name: "Bright Smile Dental",
-    phone: "+16158159219", // Drakula Serat's number (tested and working)
+    phone: "+15551234567", // Placeholder number
     location: "Nashville, TN",
     category: "Dental Clinic",
     decisionMaker: "Dr. Sarah Chen",
@@ -97,7 +97,7 @@ const FAKE_LEADS = [
   },
   {
     name: "Austin Dental Care",
-    phone: "+15125551234",
+    phone: "+15559876543", // Placeholder number
     location: "Austin, TX",
     category: "Dental Clinic",
     decisionMaker: "Dr. Michael Rodriguez",
@@ -105,7 +105,7 @@ const FAKE_LEADS = [
   },
   {
     name: "Pflugerville Family Dentistry",
-    phone: "+15125555678",
+    phone: "+15554567890", // Placeholder number
     location: "Pflugerville, TX",
     category: "Dental Clinic",
     decisionMaker: "Dr. Emily Watson",

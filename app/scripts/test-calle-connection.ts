@@ -8,7 +8,7 @@
  * 
  * Usage: 
  *   npx tsx scripts/test-calle-connection.ts                    # Test connection only
- *   npx tsx scripts/test-calle-connection.ts +15125551234       # Test with real call
+ *   npx tsx scripts/test-calle-connection.ts +15551234567       # Test with real call
  */
 
 import "dotenv/config";
@@ -87,7 +87,7 @@ async function main() {
     }
   } else {
     console.log("\n💡 To test a real call, run:");
-    console.log("   npx tsx scripts/test-calle-connection.ts +15125551234");
+    console.log("   npx tsx scripts/test-calle-connection.ts +15551234567");
   }
 
   console.log("\n✅ SDK test completed!");

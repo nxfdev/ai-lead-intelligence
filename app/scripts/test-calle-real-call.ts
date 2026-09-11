@@ -25,33 +25,38 @@ async function main() {
     baseUrl: "https://api.heycall-e.com",
   });
 
+  // Get phone number from command line or use placeholder
+  const phoneNumber = process.argv[2] || "+15551234567";
+  const recipientName = process.argv[3] || "John Doe";
+  const companyName = process.argv[4] || "ACME Corp";
+
   console.log("✅ Client initialized");
-  console.log("📞 Calling +16158159219...\n");
+  console.log(`📞 Calling ${phoneNumber}...\n`);
 
   try {
     const call = await client.calls.createAndWait(
       {
-        task: `You are an AI phone agent calling on behalf of Lord Nasif. 
+        task: `You are an AI phone agent calling on behalf of ${companyName}. 
 
 Start the call by:
-1. Say "Hi Drakula Serat"
-2. Introduce yourself and say you work for Lord Nasif
-3. Ask him a question about how his business is doing
+1. Say "Hi ${recipientName}"
+2. Introduce yourself and say you work for ${companyName}
+3. Ask them a question about how their business is doing
 
 Be professional, friendly, and conversational. Keep responses short and natural.
 
 After the conversation, provide a structured result with:
-- Whether Drakula Serat was reached
-- What he said about his business
+- Whether ${recipientName} was reached
+- What they said about their business
 - What the next action should be
 - Any additional notes`,
-        recipients: [{ phones: ["+16158159219"] }],
+        recipients: [{ phones: [phoneNumber] }],
         resultSchema: {
           type: "object",
-          required: ["drakula_reached", "business_update", "next_action", "additional_notes"],
+          required: ["recipient_reached", "business_update", "next_action", "additional_notes"],
           properties: {
-            drakula_reached: { type: "boolean", description: "Whether Drakula Serat was reached" },
-            business_update: { type: "string", description: "What he said about his business" },
+            recipient_reached: { type: "boolean", description: `Whether ${recipientName} was reached` },
+            business_update: { type: "string", description: "What they said about their business" },
             next_action: { type: "string", description: "Recommended next step" },
             additional_notes: { type: "string", description: "Any other notes from the conversation" },
           },

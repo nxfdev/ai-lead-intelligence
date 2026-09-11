@@ -1,0 +1,27 @@
+{
+  "totalCalls": 3,
+  "calls": [
+    {
+      "id": "synth_1789158826326",
+      "timestamp": "2026-09-11T20:33:46.326Z",
+      "leadName": "Bright Smile Dental",
+      "phone": "+16158159219",
+      "status": "synthetic"
+    },
+    {
+      "id": "synth_1789158826340",
+      "timestamp": "2026-09-11T20:33:46.340Z",
+      "leadName": "Austin Dental Care",
+      "phone": "+15125551234",
+      "status": "synthetic"
+    },
+    {
+      "id": "synth_1789158826352",
+      "timestamp": "2026-09-11T20:33:46.353Z",
+      "leadName": "Pflugerville Family Dentistry",
+      "phone": "+15125555678",
+      "status": "synthetic"
+    }
+  ],
+  "lastUpdated": "2026-09-11T20:33:46.353Z"
+}
