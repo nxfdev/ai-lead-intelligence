@@ -1,0 +1,244 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ─── TENANCY ────────────────────────────────────────────────
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  members           OrganizationMember[]
+  businessDocuments BusinessDocument[]
+  businessProfiles  BusinessProfile[]
+  leadCriteria      LeadCriteria[]
+  tasks             Task[]
+  leads             Lead[]
+  calls             Call[]
+  events            Event[]
+  auditLogs         AuditLog[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  userId         String       @map("user_id")
+  role           String       @default("member")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+  @@map("organization_members")
+}
+
+// ─── BUSINESS CONTEXT ───────────────────────────────────────
+
+model BusinessDocument {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  filename       String
+  storagePath    String       @map("storage_path")
+  mimeType       String       @map("mime_type")
+  extractedText  String?      @map("extracted_text")
+  fileSize       Int?         @map("file_size")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("business_documents")
+}
+
+model BusinessProfile {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  profileJson    Json         @map("profile_json")
+  version        Int          @default(1)
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("business_profiles")
+}
+
+model LeadCriteria {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  criteriaJson   Json         @map("criteria_json")
+  version        Int          @default(1)
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("lead_criteria")
+}
+
+// ─── TASKS ──────────────────────────────────────────────────
+
+model Task {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  status         String       @default("CREATED")
+  goal           String
+  progressJson   Json?        @map("progress_json")
+  error          String?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leads        Lead[]
+  events       Event[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@map("tasks")
+}
+
+// ─── LEADS & EVIDENCE ───────────────────────────────────────
+
+model Lead {
+  id                String       @id @default(uuid())
+  organizationId    String       @map("organization_id")
+  taskId            String?      @map("task_id")
+  name              String
+  phone             String?
+  website           String?
+  location          String?
+  category          String?
+  score             Int          @default(0)
+  scoreComponents   Json?        @map("score_components")
+  status            String       @default("DISCOVERED")
+  qualification     String       @default("PENDING")
+  hypothesis        String?
+  recommendedAction String?      @map("recommended_action")
+  decisionMaker     String?      @map("decision_maker")
+  employeeCount     Int?         @map("employee_count")
+  profileJson       Json?        @map("profile_json")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  task         Task?        @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  evidence     Evidence[]
+  calls        Call[]
+
+  @@index([organizationId])
+  @@index([taskId])
+  @@index([score])
+  @@index([qualification])
+  @@map("leads")
+}
+
+model Evidence {
+  id              String       @id @default(uuid())
+  leadId          String       @map("lead_id")
+  type            String       @default("OBSERVED")
+  claim           String
+  source          String
+  sourceReference String?      @map("source_reference")
+  observedAt      DateTime     @default(now()) @map("observed_at")
+  confidence      Float?
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([type])
+  @@map("evidence")
+}
+
+// ─── CALLS & RESULTS ────────────────────────────────────────
+
+model Call {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  leadId         String       @map("lead_id")
+  calleCallId    String?      @map("calle_call_id")
+  idempotencyKey String       @unique @map("idempotency_key")
+  status         String       @default("PENDING")
+  taskJson       Json?        @map("task_json")
+  briefJson      Json?        @map("brief_json")
+  duration       Int?
+  startedAt      DateTime?    @map("started_at")
+  completedAt    DateTime?    @map("completed_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  result       CallResult?
+
+  @@index([organizationId])
+  @@index([leadId])
+  @@index([status])
+  @@map("calls")
+}
+
+model CallResult {
+  id               String   @id @default(uuid())
+  callId           String   @unique @map("call_id")
+  structuredResult Json?    @map("structured_result")
+  summary          String?
+  confidence       Float?
+  qualifiedResult  String?  @map("qualified_result")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  call Call @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  @@index([callId])
+  @@map("call_results")
+}
+
+// ─── AUDIT & REALTIME ───────────────────────────────────────
+
+model Event {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  taskId         String?      @map("task_id")
+  type           String
+  data           Json
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  task         Task?        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([taskId])
+  @@index([type])
+  @@map("events")
+}
+
+model ProcessedWebhookEvent {
+  id          String   @id @default(uuid())
+  eventId     String   @unique @map("event_id")
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@map("processed_webhook_events")
+}
+
+model AuditLog {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  action         String
+  actorId        String?      @map("actor_id")
+  metadata       Json?
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([action])
+  @@map("audit_logs")
+}
