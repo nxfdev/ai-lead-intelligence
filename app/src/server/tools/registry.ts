@@ -7,7 +7,7 @@
  * data when everything comes back empty.
  */
 
-import type { LeadDiscoveryProvider, RawLead, SearchCriteria, DiscoveryToolStatus } from "@/lib/types";
+import type { LeadDiscoveryProvider, RawLead, SearchCriteria, DiscoveryToolStatus, SearchStrategyPlan } from "@/lib/types";
 import { GoogleMapsDiscoveryTool } from "./google-maps";
 import { GoogleSearchDiscoveryTool } from "./google-search";
 import { DirectoryDiscoveryTool } from "./directories";
@@ -90,7 +90,7 @@ export function getToolStatuses(): DiscoveryToolStatus[] {
 }
 
 export class ToolRegistryDiscoveryProvider implements LeadDiscoveryProvider {
-  async search(criteria: SearchCriteria): Promise<RawLead[]> {
+  async search(criteria: SearchCriteria, strategy?: SearchStrategyPlan): Promise<RawLead[]> {
     const activeIds = enabledIds();
     const activeTools = TOOL_DEFS.filter((t) => activeIds.includes(t.id));
 
@@ -101,7 +101,11 @@ export class ToolRegistryDiscoveryProvider implements LeadDiscoveryProvider {
     const results = await Promise.allSettled(
       activeTools.map(async (tool) => {
         try {
-          const leads = await tool.instance.search(criteria);
+          // Pass strategy to tool if supported (like GoogleMapsDiscoveryTool)
+          const leads = await (tool.instance as { search: (c: SearchCriteria, opts?: unknown) => Promise<RawLead[]> }).search(
+            criteria,
+            { strategy }
+          );
           runRecord.set(tool.id, {
             at: new Date().toISOString(),
             discovered: leads.length,

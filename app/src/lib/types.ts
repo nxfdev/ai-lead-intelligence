@@ -325,3 +325,61 @@ export interface TaskProgress {
   completedCalls: number;
   failedCalls: number;
 }
+
+// ─── Search Strategy & Multi-Channel Planning ───────────────
+
+export const SearchStrategyPlanSchema = z.object({
+  mapsQueries: z.array(z.string()).default([]),
+  webQueries: z.array(z.string()).default([]),
+  socialPlatforms: z.array(z.enum(["linkedin", "instagram", "youtube", "github", "tiktok", "linktree"])).default([]),
+  targetRoles: z.array(z.string()).default([]),
+  negativeKeywords: z.array(z.string()).default([]),
+  locations: z.array(z.string()).default([]),
+});
+
+export type SearchStrategyPlan = z.infer<typeof SearchStrategyPlanSchema>;
+
+// ─── Email Permutation & SMTP Verification ──────────────────
+
+export type EmailDeliverabilityStatus = "verified" | "risky" | "undeliverable" | "unknown";
+
+export interface EmailVerificationResult {
+  email: string;
+  status: EmailDeliverabilityStatus;
+  mxHost?: string;
+  isCatchAll?: boolean;
+  smtpBanner?: string;
+  score?: number;
+  error?: string;
+}
+
+export interface SocialProfile {
+  platform: "linkedin" | "instagram" | "youtube" | "github" | "tiktok" | "linktree";
+  url: string;
+  handle?: string;
+  title?: string;
+  bio?: string;
+  followerCount?: number;
+  email?: string;
+  phone?: string;
+}
+
+// ─── Batch Processing & Queue ───────────────────────────────
+
+export interface BatchDiscoveryJobData {
+  taskId: string;
+  organizationId: string;
+  criteria: SearchCriteria;
+  strategy?: SearchStrategyPlan;
+  maxLeads?: number;
+  tools?: string[];
+  useDeepBrowser?: boolean;
+}
+
+export interface BatchEnrichmentJobData {
+  taskId: string;
+  organizationId: string;
+  leadIds?: string[];
+  verifyEmails?: boolean;
+  scrapeSocial?: boolean;
+}

@@ -12,16 +12,19 @@
 
 import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
-import type { TaskProgress } from "@/lib/types";
-import { extractBusinessProfile, generateQuestionnaire, convertToCriteria } from "./planner";
+import type { TaskProgress, RawLead } from "@/lib/types";
+import { extractBusinessProfile, generateQuestionnaire, convertToCriteria, generateSearchStrategyPlan } from "./planner";
 import { createDiscoveryProvider } from "./discovery";
 import { createEnrichmentProvider } from "./enrichment";
+import { enrichLeadWithScout } from "../tools/scout-enricher";
 import { scoreLead } from "./scoring";
 import { generateCallBrief, briefToCalleTask, generateResultSchema } from "./call-brief";
 import { createPhoneAgent } from "./phone-agent";
 import { synthesizeCallResult } from "./synthesis";
 import { generateIdempotencyKey } from "@/lib/utils";
 import { broadcastEvent } from "./event-bus";
+import { enqueueDiscoveryBatch, enqueueEnrichmentBatch } from "../queue/queue";
+import { executeDiscoveryBatch, executeEnrichmentBatch } from "../queue/worker";
 
 /**
  * Run the full lead discovery pipeline for a task
@@ -63,10 +66,19 @@ export async function runPipeline(taskId: string, organizationId: string): Promi
       },
     });
 
+    // Generate LLM Multi-Channel Search Strategy
+    let strategy;
+    try {
+      strategy = await generateSearchStrategyPlan(criteria, profile);
+    } catch (err) {
+      console.warn("[Orchestrator] Strategy generation failed, using default query expansion:", (err as Error).message);
+    }
+
     await emitEvent(organizationId, taskId, "task.planning_completed", {
       profile,
       questionnaire,
       criteria,
+      strategy,
     });
 
     // ─── DISCOVERY PHASE ──────────────────────────────────────
@@ -74,14 +86,17 @@ export async function runPipeline(taskId: string, organizationId: string): Promi
     await emitEvent(organizationId, taskId, "task.discovering", {});
 
     const discoveryProvider = createDiscoveryProvider();
-    const rawLeads = await discoveryProvider.search({
-      industry: criteria.industry,
-      location: criteria.location,
-      minEmployees: criteria.minEmployees,
-      maxEmployees: criteria.maxEmployees,
-      requiredSignals: criteria.requiredSignals,
-      excluded: criteria.excluded,
-    });
+    const rawLeads = await (discoveryProvider as { search: (c: unknown, s?: unknown) => Promise<RawLead[]> }).search(
+      {
+        industry: criteria.industry,
+        location: criteria.location,
+        minEmployees: criteria.minEmployees,
+        maxEmployees: criteria.maxEmployees,
+        requiredSignals: criteria.requiredSignals,
+        excluded: criteria.excluded,
+      },
+      strategy
+    );
 
     // Store discovered leads
     const createdLeads = [];
@@ -120,19 +135,43 @@ export async function runPipeline(taskId: string, organizationId: string): Promi
 
       const { enrichment, evidenceItems, phone: enrichedPhone } = await enrichmentProvider.enrich(rawLead);
 
-      // Backfill phone from website if the raw lead had none
+      // Deep Scout enrichment (social profiles + SMTP verification)
+      let scoutData;
+      try {
+        scoutData = await enrichLeadWithScout({
+          name: lead.name,
+          website: rawLead.website || lead.website,
+          phone: rawLead.phone || lead.phone,
+          location: lead.location,
+          decisionMaker: rawLead.decisionMaker || lead.decisionMaker,
+        });
+      } catch {}
+
+      const currentProfile = (lead.profileJson as Record<string, unknown>) || {};
+      const updatedProfile = {
+        ...currentProfile,
+        enrichment,
+        emails: scoutData?.emails || [],
+        verifiedEmail: scoutData?.verifiedEmail,
+        socialProfiles: scoutData?.socialProfiles || [],
+      };
+
+      // Backfill phone and decision maker from Scout if available
+      const effectivePhone = lead.phone || enrichedPhone || scoutData?.phones?.[0];
+      const effectiveDecisionMaker = lead.decisionMaker || scoutData?.decisionMaker || enrichment.decisionMaker;
+
       await prisma.lead.update({
         where: { id: lead.id },
         data: {
           status: "ENRICHED",
-          ...(!lead.phone && enrichedPhone ? { phone: enrichedPhone } : {}),
-          profileJson: {
-            ...((lead.profileJson as Record<string, unknown>) || {}),
-            enrichment,
-          },
+          phone: effectivePhone || undefined,
+          decisionMaker: effectiveDecisionMaker || undefined,
+          website: lead.website || (scoutData?.domain ? `https://${scoutData.domain}` : undefined),
+          profileJson: updatedProfile as unknown as Prisma.InputJsonValue,
         },
       });
 
+      // Persist base evidence
       for (const ev of evidenceItems) {
         await prisma.evidence.create({
           data: {
@@ -143,6 +182,36 @@ export async function runPipeline(taskId: string, organizationId: string): Promi
             sourceReference: ev.sourceReference,
             observedAt: ev.observedAt ? new Date(ev.observedAt) : new Date(),
             confidence: ev.confidence,
+          },
+        });
+      }
+
+      // Add Scout verified email evidence
+      if (scoutData?.verifiedEmail) {
+        await prisma.evidence.create({
+          data: {
+            leadId: lead.id,
+            type: scoutData.verifiedEmail.status === "verified" ? "VERIFIED" : "OBSERVED",
+            claim: `SMTP Mailbox Verification: ${scoutData.verifiedEmail.email} (${scoutData.verifiedEmail.status.toUpperCase()})`,
+            source: "smtp_handshake",
+            sourceReference: scoutData.verifiedEmail.mxHost,
+            observedAt: new Date(),
+            confidence: scoutData.verifiedEmail.status === "verified" ? 0.98 : 0.65,
+          },
+        });
+      }
+
+      // Add Scout social evidence
+      if (scoutData?.socialProfiles && scoutData.socialProfiles.length > 0) {
+        const platforms = scoutData.socialProfiles.map((s) => s.platform).join(", ");
+        await prisma.evidence.create({
+          data: {
+            leadId: lead.id,
+            type: "OBSERVED",
+            claim: `Discovered social channels: ${platforms}`,
+            source: "scout_platform_scraper",
+            observedAt: new Date(),
+            confidence: 0.92,
           },
         });
       }

@@ -19,6 +19,9 @@ import {
   Target,
   Mic,
   Crown,
+  Download,
+  Mail,
+  Share2,
 } from "lucide-react";
 
 interface LeadDashboardPanelProps {
@@ -51,6 +54,7 @@ interface LeadData {
   recommendedAction: string | null;
   decisionMaker: string | null;
   employeeCount: number | null;
+  profileJson?: Record<string, unknown> | null;
   evidence: EvidenceItem[];
   latestCall: {
     id: string;
@@ -213,14 +217,25 @@ export function LeadDashboardPanel({
             </span>
           </div>
         </div>
-        <button
-          onClick={() => setSortBy(sortBy === "score" ? "createdAt" : "score")}
-          className="btn btn-secondary btn-sm"
-          title="Toggle Sort"
-        >
-          <ArrowUpDown className="w-3.5 h-3.5 text-[#b094ff]" />
-          Sort: {sortBy === "score" ? "AI Score" : "Recent"}
-        </button>
+        <div className="flex items-center gap-2">
+          <a
+            href="/api/leads/export?format=csv"
+            download
+            className="btn btn-secondary btn-sm"
+            title="Export leads to CSV (Batch output)"
+          >
+            <Download className="w-3.5 h-3.5 text-[#34f5c5]" />
+            Export CSV
+          </a>
+          <button
+            onClick={() => setSortBy(sortBy === "score" ? "createdAt" : "score")}
+            className="btn btn-secondary btn-sm"
+            title="Toggle Sort"
+          >
+            <ArrowUpDown className="w-3.5 h-3.5 text-[#b094ff]" />
+            Sort: {sortBy === "score" ? "AI Score" : "Recent"}
+          </button>
+        </div>
       </div>
       <hr className="panel-divider" />
 
@@ -337,6 +352,31 @@ export function LeadDashboardPanel({
                               <span className="flex items-center gap-1 font-mono">
                                 <Phone className="w-3 h-3 text-[#6a5f86]" />
                                 {lead.phone}
+                              </span>
+                            )}
+                            {Boolean(
+                              (lead.profileJson?.verifiedEmail as { email?: string })?.email ||
+                                ((lead.profileJson?.emails as string[]) || [])[0]
+                            ) && (
+                              <span
+                                className="flex items-center gap-1 text-[#34f5c5]"
+                                title={
+                                  (lead.profileJson?.verifiedEmail as { status?: string })?.status === "verified"
+                                    ? "SMTP Handshake Verified"
+                                    : "Email Discovered"
+                                }
+                              >
+                                <Mail className="w-3 h-3" />
+                                {(lead.profileJson?.verifiedEmail as { email?: string })?.email ||
+                                  ((lead.profileJson?.emails as string[]) || [])[0]}
+                              </span>
+                            )}
+                            {Boolean(
+                              ((lead.profileJson?.socialProfiles as unknown[]) || []).length > 0
+                            ) && (
+                              <span className="flex items-center gap-1 text-[#b094ff]">
+                                <Share2 className="w-3 h-3" />
+                                {((lead.profileJson?.socialProfiles as unknown[]) || []).length} socials
                               </span>
                             )}
                           </div>

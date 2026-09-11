@@ -7,10 +7,11 @@
  * Uses the OpenRouter LLM (see @/lib/llm) with strict zod validation.
  */
 
-import type { BusinessProfile, Questionnaire, LeadCriteria, QuestionnaireItem } from "@/lib/types";
+import type { BusinessProfile, Questionnaire, LeadCriteria, QuestionnaireItem, SearchStrategyPlan } from "@/lib/types";
 import {
   BusinessProfileSchema,
   LeadCriteriaSchema,
+  SearchStrategyPlanSchema,
 } from "@/lib/types";
 import { callLLM } from "@/lib/llm";
 import { delay } from "@/lib/utils";
@@ -143,5 +144,44 @@ export async function convertToCriteria(questionnaire: Questionnaire): Promise<L
     schema: LeadCriteriaSchema,
     temperature: 0.2,
     maxTokens: 8000,
+  });
+}
+
+/**
+ * Generate a multi-channel search strategy plan using the LLM.
+ * Formulates specific Google Maps queries, web/SERP search dorks,
+ * target social channels, and decision-maker roles to look for.
+ */
+export async function generateSearchStrategyPlan(
+  criteria: LeadCriteria,
+  profile?: BusinessProfile
+): Promise<SearchStrategyPlan> {
+  const industries = (criteria.industry || []).join(", ") || "General Business";
+  const city = criteria.location?.city || "";
+  const state = criteria.location?.state || "";
+  const locationStr = [city, state].filter(Boolean).join(", ") || "United States";
+
+  const prompt = `Formulate a high-yield lead generation search strategy plan for:
+Target Industry: ${industries}
+Target Geography: ${locationStr}
+Ideal Customer traits: ${(profile?.idealCustomer?.traits || []).join(", ") || "N/A"}
+Negative Signals to avoid: ${(criteria.excluded || []).join(", ") || "chains, franchises"}
+
+Return a JSON object conforming to:
+{
+  "mapsQueries": string[] (3-5 highly specific Google Maps place search queries, e.g. "pediatric dental clinic in Austin TX"),
+  "webQueries": string[] (3-5 Google/DuckDuckGo search dorks to find company contact pages or local directories, e.g. "Austin TX dental clinic 'contact us'"),
+  "socialPlatforms": ("linkedin" | "instagram" | "youtube" | "github" | "tiktok" | "linktree")[] (relevant platforms to scrape),
+  "targetRoles": string[] (3-4 job titles of key decision-makers, e.g. "Owner", "Practice Manager", "Founder"),
+  "negativeKeywords": string[] (terms to filter out),
+  "locations": string[] (sub-regions or neighborhoods within the target area)
+}`;
+
+  return callLLM<SearchStrategyPlan>({
+    system: PLANNER_SYSTEM,
+    prompt,
+    schema: SearchStrategyPlanSchema,
+    temperature: 0.2,
+    maxTokens: 4000,
   });
 }

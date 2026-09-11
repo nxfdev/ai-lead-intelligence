@@ -117,3 +117,46 @@ export function buildSearchQueries(criteria: SearchCriteria): string[] {
   }
   return queries;
 }
+
+// ─── User-Agent Pool & Anti-Bot Protection ──────────────────
+
+export const USER_AGENTS = [
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0",
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.6; rv:129.0) Gecko/20100101 Firefox/129.0",
+];
+
+export function getRandomUserAgent(): string {
+  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
+
+export async function jitterDelay(minMs = 800, maxMs = 2500): Promise<void> {
+  const duration = Math.floor(minMs + Math.random() * (maxMs - minMs));
+  await new Promise((resolve) => setTimeout(resolve, duration));
+}
+
+export function extractEmailsFromText(text: string): string[] {
+  const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
+  const matches = text.match(emailRegex) || [];
+  const invalidExtensions = [".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".js", ".css"];
+  return Array.from(new Set(matches))
+    .map((e) => e.toLowerCase().trim())
+    .filter((e) => !invalidExtensions.some((ext) => e.endsWith(ext)));
+}
+
+export function extractDomain(urlOrDomain: string): string | null {
+  if (!urlOrDomain) return null;
+  try {
+    let raw = urlOrDomain.trim();
+    if (!raw.startsWith("http://") && !raw.startsWith("https://")) {
+      raw = `https://${raw}`;
+    }
+    const parsed = new URL(raw);
+    const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+    return host.length > 3 ? host : null;
+  } catch {
+    return null;
+  }
+}
