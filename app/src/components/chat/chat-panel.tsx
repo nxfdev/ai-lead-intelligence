@@ -4,20 +4,18 @@ import { useState, useRef, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Send,
-  Bot,
-  User,
   Sparkles,
   Paperclip,
-  Upload,
-  CheckCircle2,
   FileText,
   PhoneCall,
-  ArrowRight,
-  RefreshCw,
-  HelpCircle,
   Sliders,
-  Search
+  User,
+  X,
+  ChevronDown,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
+import { AIAvatar } from "@/components/ai-avatar";
 
 interface ActionItem {
   type: string;
@@ -37,20 +35,17 @@ interface ChatPanelProps {
   taskId: string | null;
   selectedLeadId: string | null;
   onTaskCreated: (taskId: string) => void;
+  onActive?: () => void;
 }
 
-export function ChatPanel({
-  taskId,
-  selectedLeadId,
-  onTaskCreated,
-}: ChatPanelProps) {
+export function ChatPanel({ taskId, selectedLeadId, onTaskCreated, onActive }: ChatPanelProps) {
   const queryClient = useQueryClient();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome-1",
       role: "assistant",
       content:
-        "👋 Welcome! I am your **Autonomous Lead Copilot**.\n\nI can uncover qualified business prospects, extract buying criteria from your documents, break down AI scoring hypotheses, and coordinate **CALL-E voice qualification calls**.\n\nHow would you like to proceed?",
+        "Welcome! I'm **LUMI**, your autonomous female AI Lead Merchant.\n\nI can uncover qualified business prospects, extract buying criteria from your documents, break down AI scoring hypotheses, and coordinate **CALL-E voice qualification calls**.\n\nHow would you like to proceed?",
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     },
   ]);
@@ -60,7 +55,15 @@ export function ChatPanel({
   const [showDocUpload, setShowDocUpload] = useState(false);
   const [uploadedDocName, setUploadedDocName] = useState<string | null>(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [expanded, setExpanded] = useState(true);
+  const [active, setActive] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const idCounterRef = useRef(0);
+
+  const nextMessageId = (prefix: string) => {
+    idCounterRef.current += 1;
+    return `${prefix}-${idCounterRef.current}`;
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -70,11 +73,19 @@ export function ChatPanel({
     scrollToBottom();
   }, [messages, isLoading]);
 
+  const markActive = () => {
+    if (!active) {
+      setActive(true);
+      onActive?.();
+    }
+  };
+
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
+    markActive();
 
     const userMessage: Message = {
-      id: `user-${Date.now()}`,
+      id: nextMessageId("user"),
       role: "user",
       content: text,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -98,7 +109,7 @@ export function ChatPanel({
       const data = await res.json();
       if (data.success && data.data) {
         const assistantMessage: Message = {
-          id: `asst-${Date.now()}`,
+          id: nextMessageId("asst"),
           role: "assistant",
           content: data.data.content,
           actions: data.data.actions,
@@ -113,9 +124,9 @@ export function ChatPanel({
       setMessages((prev) => [
         ...prev,
         {
-          id: `asst-err-${Date.now()}`,
+          id: nextMessageId("asst-err"),
           role: "assistant",
-          content: `⚠️ Error: ${errorMsg}. Please try again.`,
+          content: `Error: ${errorMsg}. Please try again.`,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         },
       ]);
@@ -140,9 +151,9 @@ export function ChatPanel({
           setMessages((prev) => [
             ...prev,
             {
-              id: `action-${Date.now()}`,
+              id: nextMessageId("action"),
               role: "assistant",
-              content: `🚀 **Research Task Started!** (Task ID: \`${data.data.taskId.slice(0, 8)}...\`)\n\nThe orchestrator is now discovering candidates, fetching multi-channel evidence, running scoring formulas, and preparing the pipeline. Watch the middle panel update live!`,
+              content: `**Research Task Started!** (Task ID: \`${data.data.taskId.slice(0, 8)}...\`)\n\nThe orchestrator is now discovering candidates, fetching multi-channel evidence, running scoring formulas, and preparing the pipeline. Watch the pipeline panel update live!`,
               timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
             },
           ]);
@@ -164,9 +175,9 @@ export function ChatPanel({
           setMessages((prev) => [
             ...prev,
             {
-              id: `action-${Date.now()}`,
+              id: nextMessageId("action"),
               role: "assistant",
-              content: `📞 **CALL-E Voice Call Dispatched!**\n\nCall ID: \`${data.data.callId.slice(0, 8)}...\`\nStatus: \`${data.data.status}\`.\n\nThe AI voice agent will conduct a structured qualification dialog and report results to your Call Logs panel.`,
+              content: `**CALL-E Voice Call Dispatched!**\n\nCall ID: \`${data.data.callId.slice(0, 8)}...\`\nStatus: \`${data.data.status}\`.\n\nThe AI voice agent will conduct a structured qualification dialog and report results to your Call Logs panel.`,
               timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
             },
           ]);
@@ -202,9 +213,9 @@ export function ChatPanel({
         setMessages((prev) => [
           ...prev,
           {
-            id: `doc-${Date.now()}`,
+            id: nextMessageId("doc"),
             role: "assistant",
-            content: `📄 **Document Ingested: "${title}"**\n\nI have parsed the document and automatically synthesized new Ideal Customer Profile (ICP) criteria:\n• Industry: Medical, Dental, Healthcare Practices\n• Target Staff: 5-50 employees\n• Inferred Need: High after-hours missed calls, lack of bilingual reception\n\nWould you like me to run discovery against this newly extracted criteria?`,
+            content: `**Document Ingested: "${title}"**\n\nI have parsed the document and automatically synthesized new Ideal Customer Profile (ICP) criteria:\n• Industry: Medical, Dental, Healthcare Practices\n• Target Staff: 5-50 employees\n• Inferred Need: High after-hours missed calls, lack of bilingual reception\n\nWould you like me to run discovery against this newly extracted criteria?`,
             actions: [
               {
                 type: "start_research",
@@ -223,10 +234,8 @@ export function ChatPanel({
     }
   };
 
-  // Helper to render markdown-like formatted text simply
   const renderFormattedText = (text: string) => {
     return text.split("\n\n").map((block, i) => {
-      // Check if bullet list
       if (block.includes("• ") || block.startsWith("- ")) {
         const lines = block.split("\n");
         return (
@@ -251,12 +260,11 @@ export function ChatPanel({
   };
 
   const renderInlineFormatting = (text: string) => {
-    // Basic bold and code replacements
     const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
     return parts.map((part, idx) => {
       if (part.startsWith("**") && part.endsWith("**")) {
         return (
-          <strong key={idx} className="font-semibold text-slate-900">
+          <strong key={idx} className="font-semibold text-white">
             {part.slice(2, -2)}
           </strong>
         );
@@ -265,7 +273,7 @@ export function ChatPanel({
         return (
           <code
             key={idx}
-            className="px-1 py-0.5 rounded bg-slate-200/60 font-mono text-[11px] text-blue-700"
+            className="px-1.5 py-0.5 rounded bg-[#7a52ff]/20 font-mono text-[10.5px] text-[#c7b6ff] border border-[#7a52ff]/25"
           >
             {part.slice(1, -1)}
           </code>
@@ -276,127 +284,149 @@ export function ChatPanel({
   };
 
   return (
-    <div className="panel flex flex-col h-full bg-slate-50/40">
+    <div
+      className={`panel chat-col relative flex flex-col h-full transition-all duration-500 ${active ? "border-gradient" : ""}`}
+    >
       {/* Header */}
-      <div className="panel-header flex items-center justify-between border-b border-slate-200 bg-white">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md bg-blue-100 flex items-center justify-center text-blue-600">
-            <Bot className="w-3.5 h-3.5" />
-          </div>
+      <div className="panel-header flex items-center justify-between px-4">
+        <div className="flex items-center gap-2.5">
+          <AIAvatar size={expanded ? 48 : 40} />
           <div>
-            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              AI Copilot & Orchestrator
+            <h2 className="text-[12.5px] tracking-[0.12em]">
+              <span className="gradient-text font-extrabold">LUMI</span>{" "}
+              <span className="text-[#b9aed8]">· AI Lead Merchant</span>
             </h2>
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Context-Aware Assistant</span>
+            <div className="flex items-center gap-1.5 text-[10.5px] text-[#8f86a8] mt-0.5">
+              {isLoading ? (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#ffc85c] pulse-dot" />
+                  <span className="text-[#ffc85c]">Negotiating insight...</span>
+                </>
+              ) : (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#34f5c5] pulse-dot" />
+                  <span>Context-Aware · {active ? "In session" : "Idle"}</span>
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => setShowDocUpload(!showDocUpload)}
-            className={`btn btn-secondary btn-sm ${
-              showDocUpload ? "bg-slate-200" : ""
-            }`}
-            title="Upload Business ICP Documents"
+            className="btn btn-secondary btn-sm"
+            title="Upload ICP documents to calibrate the autonomous merchant"
           >
             <Paperclip className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Upload ICP</span>
           </button>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="btn btn-ghost btn-sm p-1.5"
+            title={expanded ? "Minimize panel" : "Expand panel"}
+          >
+            {expanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+          </button>
         </div>
       </div>
+      <hr className="panel-divider" />
 
-      {/* Doc Upload Slide-down Drawer */}
+      {/* Doc Upload Drawer */}
       {showDocUpload && (
-        <div className="p-4 bg-white border-b border-slate-200 animate-fade-in text-xs">
+        <div className="glass mx-3 mt-2 rounded-2xl p-4 animate-fade-in-scale text-xs flex-shrink-0">
           <div className="flex items-center justify-between mb-2">
-            <span className="font-bold text-slate-800">
+            <span className="font-bold text-white">
               Ingest Business Criteria Document
             </span>
             <button
               onClick={() => setShowDocUpload(false)}
-              className="text-slate-400 hover:text-slate-600"
+              className="text-[#7c7199] hover:text-white"
             >
-              ✕
+              <X className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-slate-500 mb-3">
-            Feed your ICP deck, sales battlecard, or service offering to calibrate the autonomous search agents:
+          <p className="text-[#b9aed8] mb-3">
+            Feed your ICP deck, sales battlecard, or service offering to calibrate the
+            autonomous search agents:
           </p>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => handleDocumentUpload("PRODUCT_SPEC", "AI Receptionist Deck.pdf")}
               disabled={uploadingDoc}
-              className="p-2.5 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-left transition flex items-center gap-2"
+              className="p-2.5 rounded-xl bg-white/[0.05] border border-white/12 hover:border-[#7a52ff]/50 hover:bg-[#7a52ff]/10 text-left transition flex items-center gap-2"
             >
-              <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+              <div className="w-8 h-8 rounded-lg bg-[#7a52ff]/20 border border-[#7a52ff]/30 flex items-center justify-center flex-shrink-0">
+                <FileText className="w-4 h-4 text-[#b094ff]" />
+              </div>
               <div className="truncate">
-                <div className="font-semibold text-slate-800 truncate">AI Receptionist Deck</div>
-                <div className="text-[10px] text-slate-400">Target dental / clinics</div>
+                <div className="font-semibold text-white text-[11px] truncate">AI Receptionist Deck</div>
+                <div className="text-[9.5px] text-[#8f86a8]">Target dental / clinics</div>
               </div>
             </button>
             <button
               onClick={() => handleDocumentUpload("BATTLECARD", "Legal & Pro Services ICP.pdf")}
               disabled={uploadingDoc}
-              className="p-2.5 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-left transition flex items-center gap-2"
+              className="p-2.5 rounded-xl bg-white/[0.05] border border-white/12 hover:border-[#7a52ff]/50 hover:bg-[#7a52ff]/10 text-left transition flex items-center gap-2"
             >
-              <FileText className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <div className="w-8 h-8 rounded-lg bg-[#ff5fa2]/15 border border-[#ff5fa2]/30 flex items-center justify-center flex-shrink-0">
+                <FileText className="w-4 h-4 text-[#ff9ecb]" />
+              </div>
               <div className="truncate">
-                <div className="font-semibold text-slate-800 truncate">Legal Services ICP</div>
-                <div className="text-[10px] text-slate-400">Boutique firms 10-50</div>
+                <div className="font-semibold text-white text-[11px] truncate">Legal Services ICP</div>
+                <div className="text-[9.5px] text-[#8f86a8]">Boutique firms 10-50</div>
               </div>
             </button>
           </div>
+          {uploadedDocName && (
+            <div className="mt-3 flex items-center gap-2 text-[#34f5c5] text-[11px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#34f5c5]" />
+              Ingested: {uploadedDocName}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Messages Scroll Area */}
-      <div className="panel-content p-4 space-y-3 flex-1 overflow-y-auto">
+      {/* Messages */}
+      <div className={`panel-content px-3 py-2 ${active ? "text-[13.5px]" : ""}`}>
         {messages.map((m) => {
           const isUser = m.role === "user";
           return (
             <div
               key={m.id}
-              className={`flex gap-2.5 animate-fade-in ${
-                isUser ? "flex-row-reverse" : "flex-row"
-              }`}
+              className={`flex gap-2.5 animate-fade-in ${isUser ? "flex-row-reverse" : "flex-row"}`}
             >
               <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs ${
-                  isUser
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-200 text-slate-700"
-                }`}
+                className={`flex-shrink-0 ${expanded ? "mt-1" : ""}`}
               >
-                {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                {isUser ? (
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#ff5fa2] to-[#6c5bff] border border-white/20 flex items-center justify-center flex-shrink-0 shadow-[0_0_12px_rgba(210,60,255,0.4)]">
+                    <User className="w-3.5 h-3.5 text-white" />
+                  </div>
+                ) : (
+                  <AIAvatar size={28} animated={false} />
+                )}
               </div>
 
               <div
-                className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs shadow-xs ${
-                  isUser
-                    ? "bg-blue-600 text-white rounded-tr-xs"
-                    : "bg-white text-slate-800 border border-slate-200/80 rounded-tl-xs"
+                className={`${isUser ? "chat-message user" : "chat-message assistant"} ${
+                  active ? "!max-w-[92%]" : ""
                 }`}
               >
-                <div className="text-[11px] opacity-70 mb-1 flex items-center justify-between gap-4">
-                  <span className="font-medium">{isUser ? "You" : "Lead Copilot"}</span>
-                  <span>{m.timestamp}</span>
+                <div className="text-[10.5px] opacity-70 mb-1 flex items-center justify-between gap-4">
+                  <span className="font-medium">{isUser ? "You" : "LUMI"}</span>
+                  <span suppressHydrationWarning>{m.timestamp}</span>
                 </div>
 
-                <div className="text-xs">
-                  {renderFormattedText(m.content)}
-                </div>
+                <div>{renderFormattedText(m.content)}</div>
 
-                {/* Actions attached to message */}
                 {m.actions && m.actions.length > 0 && (
-                  <div className="mt-3 pt-2 border-t border-slate-100 flex flex-wrap gap-1.5">
+                  <div className="mt-3 pt-2.5 border-t border-white/10 flex flex-wrap gap-1.5">
                     {m.actions.map((act, actIdx) => (
                       <button
                         key={actIdx}
                         onClick={() => handleAction(act)}
-                        className="btn btn-primary btn-sm text-[11px] py-1 px-2.5 shadow-xs"
+                        className="btn btn-primary btn-sm"
                       >
                         {act.type === "call_lead" && <PhoneCall className="w-3 h-3" />}
                         {act.type === "start_research" && <Sparkles className="w-3 h-3" />}
@@ -413,87 +443,93 @@ export function ChatPanel({
 
         {isLoading && (
           <div className="flex gap-2.5 animate-fade-in">
-            <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center flex-shrink-0">
-              <Bot className="w-4 h-4" />
-            </div>
-            <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-xs px-4 py-3 shadow-xs">
-              <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" />
-                <div
-                  className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce"
-                  style={{ animationDelay: "0.2s" }}
-                />
-                <div
-                  className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce"
-                  style={{ animationDelay: "0.4s" }}
-                />
-                <span className="text-xs text-slate-400 ml-1.5">Thinking...</span>
-              </div>
+            <AIAvatar size={28} animated={false} />
+            <div className="glass rounded-2xl rounded-tl-6px px-4 py-3 flex items-center gap-2">
+              <span className="typing-dot" />
+              <span className="typing-dot" />
+              <span className="typing-dot" />
+              <span className="text-[11px] text-[#8f86a8] ml-1.5">LUMI is negotiating...</span>
             </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Suggested Quick Prompts */}
-      <div className="px-4 py-2 border-t border-slate-200 bg-white/70 overflow-x-auto flex items-center gap-1.5 text-xs flex-shrink-0">
+      {/* Quick prompts */}
+      <div className="px-3 py-2 overflow-x-auto flex items-center gap-1.5 flex-shrink-0">
         <button
-          onClick={() =>
+          onClick={() => {
+            markActive();
             sendMessage(
               selectedLeadId
                 ? "Why did this selected lead score high? Break down the evidence."
                 : "Why did the top ranked lead score highest?"
-            )
-          }
-          className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 border border-slate-200 whitespace-nowrap transition text-[11px]"
+            );
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.05] hover:bg-white/[0.12] hover:border-[#7a52ff]/40 text-[#c9c0e6] border border-white/10 whitespace-nowrap transition text-[11px] font-medium"
         >
-          🔍 Explain Top Score
+          <Sparkles className="w-3 h-3 text-[#ffd58a]" />
+          Explain Top Score
         </button>
         <button
-          onClick={() => sendMessage("Show current lead criteria & target ICP rules")}
-          className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 border border-slate-200 whitespace-nowrap transition text-[11px]"
+          onClick={() => {
+            markActive();
+            sendMessage("Show current lead criteria & target ICP rules");
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.05] hover:bg-white/[0.12] hover:border-[#7a52ff]/40 text-[#c9c0e6] border border-white/10 whitespace-nowrap transition text-[11px] font-medium"
         >
-          🎯 Show Criteria
+          <Sliders className="w-3 h-3 text-[#b094ff]" />
+          Show Criteria
         </button>
         <button
-          onClick={() =>
-            sendMessage("Find 5 new dental practices in Austin needing phone automation")
-          }
-          className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 border border-slate-200 whitespace-nowrap transition text-[11px]"
+          onClick={() => {
+            markActive();
+            sendMessage("Find 5 new dental practices in Austin needing phone automation");
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.05] hover:bg-white/[0.12] hover:border-[#7a52ff]/40 text-[#c9c0e6] border border-white/10 whitespace-nowrap transition text-[11px] font-medium"
         >
-          ⚡ Discover New Leads
+          <Sparkles className="w-3 h-3 text-[#ff9ecb]" />
+          Discover New Leads
         </button>
       </div>
 
-      {/* Input Bar */}
-      <div className="p-3 border-t border-slate-200 bg-white flex-shrink-0">
+      {/* Input bar */}
+      <div className="px-3 pb-3 pt-0.5 flex-shrink-0">
         <form
           onSubmit={(e) => {
             e.preventDefault();
             sendMessage(input);
           }}
-          className="flex items-center gap-2"
+          className="border-gradient rounded-2xl p-[1px]"
         >
-          <input
-            type="text"
-            placeholder={
-              selectedLeadId
-                ? "Ask about selected lead (e.g., 'Why call them?')..."
-                : "Ask copilot, adjust criteria, or dispatch search..."
-            }
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={isLoading}
-            className="flex-1 text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 bg-slate-50 focus:bg-white transition"
-          />
-          <button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            className="btn btn-primary btn-sm px-3 py-2"
-          >
-            <Send className="w-3.5 h-3.5" />
-          </button>
+          <div className="glass-strong rounded-2xl flex items-center gap-2 p-1.5">
+            <input
+              type="text"
+              placeholder={
+                selectedLeadId
+                  ? "Ask about selected lead (e.g., 'Why call them?')..."
+                  : "Command LUMI: discover, score, explain, call..."
+              }
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onFocus={markActive}
+              disabled={isLoading}
+              className="flex-1 text-xs px-3 py-2 bg-transparent focus:outline-none placeholder-[#6a5f86]"
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              className="btn btn-primary btn-sm px-3 py-2"
+              title="Send command"
+            >
+              <Send className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </form>
+        <div className="flex items-center justify-center gap-1 text-[9.5px] text-[#4a3f68] mt-2">
+          <ChevronDown className="w-2.5 h-2.5" />
+          LUMI orchestrates research, scoring & CALL-E voice outreach
+        </div>
       </div>
     </div>
   );

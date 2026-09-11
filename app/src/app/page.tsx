@@ -9,6 +9,7 @@ import { DashboardHeader } from "@/components/dashboard/header";
 export default function DashboardPage() {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [chatActive, setChatActive] = useState(false);
 
   return (
     <div className="h-screen flex flex-col">
@@ -16,10 +17,8 @@ export default function DashboardPage() {
         activeTaskId={activeTaskId}
         onTaskCreated={(taskId) => setActiveTaskId(taskId)}
       />
-      <div className="dashboard-grid flex-1">
-        <CallLogPanel
-          onSelectLead={(leadId) => setSelectedLeadId(leadId)}
-        />
+      <div className={`dashboard-grid flex-1 ${chatActive ? "chat-active" : ""}`}>
+        <CallLogPanel onSelectLead={(leadId) => setSelectedLeadId(leadId)} />
         <LeadDashboardPanel
           taskId={activeTaskId}
           selectedLeadId={selectedLeadId}
@@ -29,6 +28,7 @@ export default function DashboardPage() {
           taskId={activeTaskId}
           selectedLeadId={selectedLeadId}
           onTaskCreated={(taskId) => setActiveTaskId(taskId)}
+          onActive={() => setChatActive(true)}
         />
       </div>
     </div>

@@ -9,18 +9,16 @@ import {
   Globe,
   Users,
   UserCheck,
-  CheckCircle2,
-  Clock,
   Sparkles,
   Search,
-  Filter,
   ArrowUpDown,
   PhoneCall,
-  Info,
   X,
   ShieldCheck,
   TrendingUp,
-  FileText
+  Target,
+  Mic,
+  Crown,
 } from "lucide-react";
 
 interface LeadDashboardPanelProps {
@@ -66,8 +64,71 @@ interface LeadData {
   createdAt: string;
 }
 
+function ScoreRing({ score, size = 50 }: { score: number; size?: number }) {
+  const stroke = 4.5;
+  const radius = (size - stroke) / 2 - 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - Math.min(100, Math.max(0, score)) / 100);
+  const color =
+    score >= 75 ? "#34f5c5" : score >= 50 ? "#ffc85c" : "#ff6b8a";
+
+  return (
+    <div className="score-ring" style={{ width: size, height: size }}>
+      <svg width={size} height={size}>
+        <circle
+          className="bg"
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          strokeWidth={stroke}
+          fill="none"
+        />
+        <circle
+          className="val"
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color}
+          strokeWidth={stroke}
+          fill="none"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+        <text
+          x="50%"
+          y="50%"
+          dominantBaseline="central"
+          textAnchor="middle"
+          fill={color}
+        >
+          {score}
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+function SectionTitle({
+  icon,
+  children,
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#7a52ff]/25 to-[#ff5fa2]/25 border border-white/10 flex items-center justify-center">
+        {icon}
+      </div>
+      <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#c9c0e6]">
+        {children}
+      </span>
+    </div>
+  );
+}
+
 export function LeadDashboardPanel({
-  taskId,
   selectedLeadId,
   onSelectLead,
 }: LeadDashboardPanelProps) {
@@ -96,9 +157,7 @@ export function LeadDashboardPanel({
 
   const callMutation = useMutation({
     mutationFn: async (leadId: string) => {
-      const res = await fetch(`/api/leads/${leadId}/call`, {
-        method: "POST",
-      });
+      const res = await fetch(`/api/leads/${leadId}/call`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Failed to trigger call");
@@ -111,16 +170,10 @@ export function LeadDashboardPanel({
     },
   });
 
-  const getScoreBadgeClass = (score: number) => {
-    if (score >= 75) return "score-badge high";
-    if (score >= 50) return "score-badge medium";
-    return "score-badge low";
-  };
-
   const getStatusBadge = (qual: string) => {
     switch (qual) {
       case "qualified":
-        return <span className="status-badge verified">Verified Qualified</span>;
+        return <span className="status-badge verified">Verified</span>;
       case "not_qualified":
         return <span className="status-badge failed">Unqualified</span>;
       case "needs_follow_up":
@@ -132,112 +185,123 @@ export function LeadDashboardPanel({
 
   const selectedLead = leads?.find((l) => l.id === selectedLeadId);
 
-  // Quick stats calculations
   const totalLeads = leads?.length || 0;
   const highIntentLeads = leads?.filter((l) => l.score >= 70).length || 0;
-  const qualifiedLeads = leads?.filter((l) => l.qualification === "qualified").length || 0;
+  const qualifiedLeads =
+    leads?.filter((l) => l.qualification === "qualified").length || 0;
   const calledLeads = leads?.filter((l) => l.latestCall !== null).length || 0;
 
+  const metrics = [
+    { label: "Discovered", value: totalLeads, icon: <Target className="w-3.5 h-3.5" />, tone: "#b094ff" },
+    { label: "High Match 70+", value: highIntentLeads, icon: <Sparkles className="w-3.5 h-3.5" />, tone: "#ff9ecb" },
+    { label: "AI Verified", value: qualifiedLeads, icon: <ShieldCheck className="w-3.5 h-3.5" />, tone: "#34f5c5" },
+    { label: "Calls Placed", value: calledLeads, icon: <PhoneCall className="w-3.5 h-3.5" />, tone: "#f0b429" },
+  ];
+
   return (
-    <div className="panel relative flex flex-col h-full bg-white">
-      {/* Top Header */}
-      <div className="panel-header flex items-center justify-between border-b border-slate-200">
-        <div>
-          <h2>Lead Pipeline & Intelligence</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Ranked prospects with automated evidence synthesis & CALL-E voice dispatch
-          </p>
+    <div className="panel relative animate-fade-in" style={{ animationDelay: "0.1s" }}>
+      {/* Header */}
+      <div className="panel-header flex items-center justify-between px-5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#7a52ff]/30 to-[#ff5fa2]/30 border border-white/12 flex items-center justify-center">
+            <Crown className="w-4 h-4 text-[#ffd58a]" />
+          </div>
+          <div>
+            <h2>Lead Pipeline</h2>
+            <span className="text-[10px] text-[#7c7199] mt-0.5 block">
+              Evidence-based scoring & CALL-E dispatch
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setSortBy(sortBy === "score" ? "createdAt" : "score")}
-            className="btn btn-secondary btn-sm text-xs"
-            title="Toggle Sort"
-          >
-            <ArrowUpDown className="w-3.5 h-3.5" />
-            Sort: {sortBy === "score" ? "AI Score" : "Recent"}
-          </button>
-        </div>
+        <button
+          onClick={() => setSortBy(sortBy === "score" ? "createdAt" : "score")}
+          className="btn btn-secondary btn-sm"
+          title="Toggle Sort"
+        >
+          <ArrowUpDown className="w-3.5 h-3.5 text-[#b094ff]" />
+          Sort: {sortBy === "score" ? "AI Score" : "Recent"}
+        </button>
+      </div>
+      <hr className="panel-divider" />
+
+      {/* Metrics */}
+      <div className="grid grid-cols-4 gap-2 px-4 pt-3 flex-shrink-0">
+        {metrics.map((m) => (
+          <div key={m.label} className="metric-card p-2.5 shimmer-sweep">
+            <div className="flex items-center gap-1.5 mb-1" style={{ color: m.tone }}>
+              {m.icon}
+              <span className="text-[9.5px] font-bold uppercase tracking-wider opacity-90">
+                {m.label}
+              </span>
+            </div>
+            <div className="text-lg font-extrabold text-white leading-none">
+              {m.value}
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Metrics Banner */}
-      <div className="grid grid-cols-4 gap-2 px-5 py-3 bg-slate-50 border-b border-slate-200 text-xs">
-        <div className="bg-white p-2.5 rounded-lg border border-slate-200/80 shadow-xs">
-          <div className="text-slate-500 font-medium">Total Discovered</div>
-          <div className="text-lg font-bold text-slate-800 mt-0.5">{totalLeads}</div>
-        </div>
-        <div className="bg-white p-2.5 rounded-lg border border-slate-200/80 shadow-xs">
-          <div className="text-slate-500 font-medium">High Match (70+)</div>
-          <div className="text-lg font-bold text-blue-600 mt-0.5">{highIntentLeads}</div>
-        </div>
-        <div className="bg-white p-2.5 rounded-lg border border-slate-200/80 shadow-xs">
-          <div className="text-slate-500 font-medium">Calls Placed</div>
-          <div className="text-lg font-bold text-indigo-600 mt-0.5">{calledLeads}</div>
-        </div>
-        <div className="bg-white p-2.5 rounded-lg border border-slate-200/80 shadow-xs">
-          <div className="text-slate-500 font-medium">AI Verified</div>
-          <div className="text-lg font-bold text-emerald-600 mt-0.5">{qualifiedLeads}</div>
-        </div>
-      </div>
-
-      {/* Search & Filter Toolbar */}
-      <div className="px-5 py-2.5 border-b border-slate-200 flex items-center justify-between gap-3 bg-white">
+      {/* Search & Filter */}
+      <div className="px-4 py-2.5 flex items-center justify-between gap-3 flex-shrink-0">
         <div className="relative flex-1">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-[#7c7199] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Filter by business name, city, specialty..."
+            placeholder="Filter by name, city, specialty..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+            className="w-full pl-9 pr-3 py-1.5 text-xs premium-input"
           />
         </div>
-
         <div className="flex items-center gap-2">
           <select
             value={filterQual}
             onChange={(e) => setFilterQual(e.target.value)}
-            className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:border-blue-400"
+            className="text-xs premium-input px-2 py-1.5 bg-transparent"
           >
-            <option value="all">All Qualifications</option>
-            <option value="qualified">Verified Qualified</option>
-            <option value="needs_follow_up">Needs Follow Up</option>
-            <option value="not_qualified">Not Qualified</option>
-            <option value="pending">Pending</option>
+            <option value="all">All</option>
+            <option value="qualified" className="bg-[#0b0524]">Qualified</option>
+            <option value="needs_follow_up" className="bg-[#0b0524]">Follow Up</option>
+            <option value="not_qualified" className="bg-[#0b0524]">Unqualified</option>
+            <option value="pending" className="bg-[#0b0524]">Pending</option>
           </select>
-
           <select
             value={minScore}
             onChange={(e) => setMinScore(Number(e.target.value))}
-            className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:border-blue-400"
+            className="text-xs premium-input px-2 py-1.5 bg-transparent"
           >
             <option value={0}>Any Score</option>
-            <option value={50}>Score &gt;= 50</option>
-            <option value={75}>Score &gt;= 75 (High Match)</option>
-            <option value={85}>Score &gt;= 85 (Top Tier)</option>
+            <option value={50} className="bg-[#0b0524]">50+</option>
+            <option value={75} className="bg-[#0b0524]">75+</option>
+            <option value={85} className="bg-[#0b0524]">85+</option>
           </select>
         </div>
       </div>
 
-      {/* Main List & Side Detail View */}
+      {/* Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Leads Scroll Area */}
-        <div className={`overflow-y-auto ${selectedLead ? "w-1/2 border-r border-slate-200" : "w-full"}`}>
+        {/* Leads list */}
+        <div
+          className={`overflow-y-auto ${selectedLead ? "w-1/2 border-r border-white/10" : "w-full"}`}
+        >
           {isLoading ? (
-            <div className="p-12 text-center text-slate-400 text-sm">
-              Loading prospects...
+            <div className="p-12 text-center">
+              <div className="inline-block w-8 h-8 rounded-full border-2 border-[#7a52ff]/30 border-t-[#d23cff] animate-spin" />
+              <div className="text-xs text-[#7c7199] mt-3">Scanning prospects...</div>
             </div>
           ) : !leads || leads.length === 0 ? (
             <div className="p-12 text-center">
-              <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-              <p className="text-sm font-medium text-slate-600">No leads found</p>
-              <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                Type a research request in the header or in the AI Copilot on the right to discover leads.
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-[#7a52ff]/15 to-[#ff5fa2]/15 border border-white/10 flex items-center justify-center mb-4">
+                <Building2 className="w-7 h-7 text-[#7c7199]" />
+              </div>
+              <p className="text-sm font-semibold text-[#c9c0e6]">No leads found</p>
+              <p className="text-xs text-[#7c7199] mt-1.5 max-w-sm mx-auto leading-relaxed">
+                Type a research request in the header or ask the AI assistant to discover leads.
               </p>
             </div>
           ) : (
             <div>
-              {leads.map((lead) => {
+              {leads.map((lead, idx) => {
                 const isSelected = lead.id === selectedLeadId;
                 const isCalling =
                   callMutation.isPending && callMutation.variables === lead.id;
@@ -246,87 +310,82 @@ export function LeadDashboardPanel({
                   <div
                     key={lead.id}
                     onClick={() => onSelectLead(lead.id)}
-                    className={`lead-card p-4 transition border-b border-slate-100 cursor-pointer hover:bg-slate-50/80 ${
-                      isSelected ? "bg-blue-50/50 border-l-4 border-l-blue-600" : ""
-                    }`}
+                    className={`lead-card animate-fade-in ${isSelected ? "selected" : ""}`}
+                    style={{ animationDelay: `${Math.min(idx * 0.03, 0.3)}s` }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 flex-1 min-w-0">
-                        {/* Score Badge */}
-                        <div className={getScoreBadgeClass(lead.score)}>
-                          {lead.score}
-                        </div>
+                        <ScoreRing score={lead.score} />
 
-                        {/* Details */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-semibold text-slate-900 truncate">
+                            <h3 className="text-[13.5px] font-semibold text-white truncate">
                               {lead.name}
                             </h3>
-                            {getStatusBadge(lead.qualification)}
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-500 mt-1">
+                          <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-[11px] text-[#8f86a8] mt-1">
                             <span className="flex items-center gap-1">
-                              <Building2 className="w-3 h-3 text-slate-400" />
+                              <Building2 className="w-3 h-3 text-[#6a5f86]" />
                               {lead.category}
                             </span>
                             <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-slate-400" />
+                              <MapPin className="w-3 h-3 text-[#6a5f86]" />
                               {lead.location}
                             </span>
                             {lead.phone && (
-                              <span className="flex items-center gap-1">
-                                <Phone className="w-3 h-3 text-slate-400" />
+                              <span className="flex items-center gap-1 font-mono">
+                                <Phone className="w-3 h-3 text-[#6a5f86]" />
                                 {lead.phone}
                               </span>
                             )}
                           </div>
 
                           {lead.hypothesis && (
-                            <p className="text-xs text-slate-600 mt-2 bg-slate-50 p-2 rounded border border-slate-200/60 line-clamp-2 leading-relaxed">
-                              <span className="font-semibold text-slate-700">Hypothesis: </span>
+                            <p className="text-[11px] text-[#b9aed8] mt-2 bg-white/[0.04] p-2 rounded-lg border border-white/[0.06] line-clamp-2 leading-relaxed">
                               {lead.hypothesis}
                             </p>
                           )}
 
-                          {/* Evidence tags */}
-                          {lead.evidence && lead.evidence.length > 0 && (
-                            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                              {lead.evidence.slice(0, 3).map((e) => (
-                                <span
-                                  key={e.id}
-                                  className={`evidence-chip ${
-                                    e.type === "VERIFIED"
-                                      ? "verified"
-                                      : e.type === "INFERRED"
-                                      ? "inferred"
-                                      : "observed"
-                                  }`}
-                                  title={e.claim}
-                                >
-                                  {e.claim.substring(0, 24)}...
-                                </span>
-                              ))}
-                              {lead.evidence.length > 3 && (
-                                <span className="text-[10px] text-slate-400 font-medium">
-                                  +{lead.evidence.length - 3} more
-                                </span>
-                              )}
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                            {getStatusBadge(lead.qualification)}
+                            {lead.evidence && lead.evidence.length > 0 && (
+                              <>
+                                {lead.evidence.slice(0, 2).map((e) => (
+                                  <span
+                                    key={e.id}
+                                    className={`evidence-chip ${
+                                      e.type === "VERIFIED"
+                                        ? "verified"
+                                        : e.type === "INFERRED"
+                                          ? "inferred"
+                                          : "observed"
+                                    }`}
+                                    title={e.claim}
+                                  >
+                                    {e.claim.substring(0, 22)}...
+                                  </span>
+                                ))}
+                                {lead.evidence.length > 2 && (
+                                  <span className="text-[10px] text-[#6a5f86] font-medium">
+                                    +{lead.evidence.length - 2}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      {/* Quick Call Action */}
-                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <div
+                        className="flex flex-col items-end gap-1.5 flex-shrink-0"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <button
                           onClick={() => callMutation.mutate(lead.id)}
                           disabled={isCalling || !lead.phone}
                           className={`btn btn-sm ${
-                            lead.latestCall
-                              ? "btn-secondary text-slate-700"
-                              : "btn-primary"
+                            lead.latestCall ? "btn-secondary" : "btn-primary"
                           }`}
                           title="Trigger AI phone qualification call via CALL-E"
                         >
@@ -334,11 +393,12 @@ export function LeadDashboardPanel({
                           {isCalling
                             ? "Calling..."
                             : lead.latestCall
-                            ? "Re-Call"
-                            : "Call"}
+                              ? "Re-Call"
+                              : "Call"}
                         </button>
                         {lead.latestCall && (
-                          <span className="text-[10px] text-emerald-600 font-medium">
+                          <span className="text-[10px] text-[#34f5c5] font-bold flex items-center gap-1">
+                            <Mic className="w-2.5 h-2.5" />
                             {lead.latestCall.status}
                           </span>
                         )}
@@ -351,71 +411,71 @@ export function LeadDashboardPanel({
           )}
         </div>
 
-        {/* Lead Inspection Drawer / Right Sub-Panel */}
+        {/* Lead detail drawer */}
         {selectedLead && (
-          <div className="w-1/2 overflow-y-auto bg-slate-50/50 p-5 flex flex-col gap-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-slate-900">
-                    {selectedLead.name}
-                  </h3>
+          <div className="w-1/2 overflow-y-auto p-5 flex flex-col gap-4 bg-black/20">
+            <div className="flex items-start justify-between animate-fade-in">
+              <div className="flex items-center gap-3">
+                <ScoreRing score={selectedLead.score} size={62} />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-white">
+                      {selectedLead.name}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px] text-[#8f86a8] mt-1">
+                    <span>{selectedLead.category}</span>
+                    <span className="text-[#4a3f68]">•</span>
+                    <span>{selectedLead.location}</span>
+                  </div>
                   {getStatusBadge(selectedLead.qualification)}
-                </div>
-                <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
-                  <span>{selectedLead.category}</span>
-                  <span>•</span>
-                  <span>{selectedLead.location}</span>
                 </div>
               </div>
               <button
                 onClick={() => onSelectLead("")}
-                className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-200"
+                className="p-1.5 rounded-lg text-[#7c7199] hover:text-white hover:bg-white/10 transition"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Action Call Banner */}
-            <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between">
-              <div>
-                <div className="text-xs font-semibold text-blue-900">
-                  Ready for AI Agent Calling
+            {/* Action banner */}
+            <div className="border-gradient rounded-2xl p-[1px]">
+              <div className="glass-strong rounded-2xl p-3.5 flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Mic className="w-3.5 h-3.5 text-[#ff9ecb]" />
+                    Ready for AI Agent Calling
+                  </div>
+                  <div className="text-[11px] text-[#b9aed8] mt-1 font-mono">
+                    {selectedLead.phone || "No phone"}
+                  </div>
                 </div>
-                <div className="text-xs text-blue-700 mt-0.5">
-                  Phone: <span className="font-mono font-medium">{selectedLead.phone || "No phone"}</span>
-                </div>
+                <button
+                  onClick={() => callMutation.mutate(selectedLead.id)}
+                  disabled={callMutation.isPending || !selectedLead.phone}
+                  className="btn btn-primary btn-sm"
+                >
+                  <PhoneCall className="w-3.5 h-3.5" />
+                  {callMutation.isPending ? "Connecting..." : "Trigger Call"}
+                </button>
               </div>
-              <button
-                onClick={() => callMutation.mutate(selectedLead.id)}
-                disabled={callMutation.isPending || !selectedLead.phone}
-                className="btn btn-primary btn-sm"
-              >
-                <PhoneCall className="w-3.5 h-3.5" />
-                {callMutation.isPending ? "Connecting..." : "Trigger Call"}
-              </button>
             </div>
 
-            {/* Score Breakdown Section */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-500" />
-                  <span className="text-xs font-bold uppercase text-slate-700 tracking-wider">
-                    Score Breakdown ({selectedLead.score}/100)
-                  </span>
-                </div>
-              </div>
-
+            {/* Score breakdown */}
+            <div className="detail-card p-4">
+              <SectionTitle icon={<Sparkles className="w-3 h-3 text-[#ffd58a]" />}>
+                Score Breakdown ({selectedLead.score}/100)
+              </SectionTitle>
               {selectedLead.scoreComponents ? (
-                <div className="space-y-2 text-xs">
+                <div className="space-y-2 text-[11px]">
                   {Object.entries(selectedLead.scoreComponents).map(([key, value]) => (
                     <div key={key}>
-                      <div className="flex justify-between text-slate-600 font-medium mb-1 capitalize">
+                      <div className="flex justify-between text-[#b9aed8] font-medium mb-1 capitalize">
                         <span>{key.replace(/([A-Z])/g, " $1")}</span>
-                        <span className="font-bold">{value}%</span>
+                        <span className="font-bold text-white">{value}%</span>
                       </div>
-                      <div className="progress-bar">
+                      <div className="progress-track">
                         <div
                           className="progress-fill"
                           style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
@@ -425,54 +485,58 @@ export function LeadDashboardPanel({
                   ))}
                 </div>
               ) : (
-                <div className="text-xs text-slate-400">Standard heuristic scoring applied.</div>
+                <div className="text-xs text-[#7c7199]">Standard heuristic scoring applied.</div>
               )}
             </div>
 
             {/* Hypothesis & Strategy */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 text-xs">
-              <div className="flex items-center gap-1.5 font-bold uppercase text-slate-700 tracking-wider mb-2">
-                <ShieldCheck className="w-4 h-4 text-blue-600" />
-                <span>Sales Hypothesis & Recommendation</span>
-              </div>
-              <div className="space-y-2">
+            <div className="detail-card p-4">
+              <SectionTitle icon={<ShieldCheck className="w-3 h-3 text-[#34f5c5]" />}>
+                Hypothesis & Recommendation
+              </SectionTitle>
+              <div className="space-y-2.5 text-[11.5px]">
                 <div>
-                  <span className="font-semibold text-slate-700">Hypothesis:</span>
-                  <p className="text-slate-600 mt-0.5 leading-relaxed bg-slate-50 p-2 rounded">
+                  <span className="font-semibold text-white">Hypothesis: </span>
+                  <p className="text-[#b9aed8] mt-0.5 leading-relaxed">
                     {selectedLead.hypothesis || "No specific hypothesis generated."}
                   </p>
                 </div>
                 <div>
-                  <span className="font-semibold text-slate-700">Recommended Action:</span>
-                  <p className="text-slate-600 mt-0.5 leading-relaxed bg-slate-50 p-2 rounded">
-                    {selectedLead.recommendedAction || "Call office manager to confirm after-hours scheduling bottleneck."}
+                  <span className="font-semibold text-white">Recommended: </span>
+                  <p className="text-[#b9aed8] mt-0.5 leading-relaxed">
+                    {selectedLead.recommendedAction ||
+                      "Call office manager to confirm after-hours scheduling bottleneck."}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Key Contacts & Metadata */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 text-xs">
-              <span className="font-bold uppercase text-slate-700 tracking-wider block mb-2">
+            {/* Contacts */}
+            <div className="detail-card p-4">
+              <SectionTitle icon={<Users className="w-3 h-3 text-[#b094ff]" />}>
                 Company & Contact Profile
-              </span>
-              <div className="grid grid-cols-2 gap-2 text-slate-600">
+              </SectionTitle>
+              <div className="grid grid-cols-2 gap-2.5 text-[11.5px] text-[#b9aed8]">
                 <div className="flex items-center gap-1.5">
-                  <UserCheck className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Contact: <strong>{selectedLead.decisionMaker || "Not listed"}</strong></span>
+                  <UserCheck className="w-3.5 h-3.5 text-[#6a5f86]" />
+                  <span>
+                    Contact: <strong className="text-white">{selectedLead.decisionMaker || "Not listed"}</strong>
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Staff: <strong>{selectedLead.employeeCount || "5-15"}</strong></span>
+                  <Users className="w-3.5 h-3.5 text-[#6a5f86]" />
+                  <span>
+                    Staff: <strong className="text-white">{selectedLead.employeeCount || "5-15"}</strong>
+                  </span>
                 </div>
                 {selectedLead.website && (
                   <div className="col-span-2 flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-slate-400" />
+                    <Globe className="w-3.5 h-3.5 text-[#6a5f86]" />
                     <a
                       href={selectedLead.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline truncate"
+                      className="text-[#b094ff] hover:underline truncate"
                     >
                       {selectedLead.website}
                     </a>
@@ -481,52 +545,49 @@ export function LeadDashboardPanel({
               </div>
             </div>
 
-            {/* Evidence & Grounding */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 text-xs">
-              <span className="font-bold uppercase text-slate-700 tracking-wider block mb-2">
+            {/* Evidence */}
+            <div className="detail-card p-4">
+              <SectionTitle icon={<TrendingUp className="w-3 h-3 text-[#f0b429]" />}>
                 Grounding Evidence ({selectedLead.evidence?.length || 0})
-              </span>
+              </SectionTitle>
               {selectedLead.evidence && selectedLead.evidence.length > 0 ? (
                 <div className="space-y-2">
                   {selectedLead.evidence.map((ev) => (
-                    <div
-                      key={ev.id}
-                      className="p-2 rounded-lg bg-slate-50 border border-slate-200/70"
-                    >
+                    <div key={ev.id} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07]">
                       <div className="flex items-center justify-between mb-1">
                         <span
                           className={`evidence-chip ${
                             ev.type === "VERIFIED"
                               ? "verified"
                               : ev.type === "INFERRED"
-                              ? "inferred"
-                              : "observed"
+                                ? "inferred"
+                                : "observed"
                           }`}
                         >
                           {ev.type}
                         </span>
-                        <span className="text-[10px] text-slate-400">
-                          {Math.round(ev.confidence * 100)}% conf • {ev.source}
+                        <span className="text-[10px] text-[#6a5f86]">
+                          {Math.round(ev.confidence * 100)}% • {ev.source}
                         </span>
                       </div>
-                      <p className="text-slate-700 font-medium">{ev.claim}</p>
+                      <p className="text-[11.5px] text-[#d9d2f0] font-medium">{ev.claim}</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-slate-400">No evidence items recorded.</div>
+                <div className="text-xs text-[#7c7199]">No evidence items recorded.</div>
               )}
             </div>
 
-            {/* Latest Call Result */}
+            {/* Latest call */}
             {selectedLead.latestCall && (
-              <div className="bg-white p-4 rounded-xl border border-slate-200 text-xs">
-                <span className="font-bold uppercase text-slate-700 tracking-wider block mb-2">
+              <div className="detail-card p-4">
+                <SectionTitle icon={<PhoneCall className="w-3 h-3 text-[#34f5c5]" />}>
                   Latest Call Result
-                </span>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                </SectionTitle>
+                <div className="p-3 bg-white/[0.04] rounded-xl border border-white/[0.07]">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-semibold text-slate-800">
+                    <span className="font-semibold text-white text-[11.5px]">
                       Status: {selectedLead.latestCall.status}
                     </span>
                     {selectedLead.latestCall.result?.qualification && (
@@ -536,7 +597,7 @@ export function LeadDashboardPanel({
                     )}
                   </div>
                   {selectedLead.latestCall.result?.summary && (
-                    <p className="text-slate-600 leading-relaxed mt-1">
+                    <p className="text-[#b9aed8] text-[11.5px] leading-relaxed mt-1">
                       {selectedLead.latestCall.result.summary}
                     </p>
                   )}
