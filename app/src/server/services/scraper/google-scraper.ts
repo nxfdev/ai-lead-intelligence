@@ -173,9 +173,9 @@ export class GoogleScraper extends BaseScraper {
     
     return {
       name: this.extractBusinessName(title),
-      phone,
-      website,
-      location,
+      phone: phone || undefined,
+      website: website || undefined,
+      location: location || undefined,
       discoveredFrom: this.platform,
       discoveredUrl: url,
       description: snippet,

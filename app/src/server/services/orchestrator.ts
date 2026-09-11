@@ -415,6 +415,7 @@ export async function executeCall(
           callId,
           structuredResult: (result.structuredResult || {}) as unknown as Prisma.InputJsonValue,
           summary: synthesis.summary,
+          transcript: result.transcript,
           confidence: 0.85,
           qualifiedResult: synthesis.qualification,
         },

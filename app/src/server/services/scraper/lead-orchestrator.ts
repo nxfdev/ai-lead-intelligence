@@ -199,7 +199,7 @@ export class LeadGenerationOrchestrator {
           email: lead.email || existingLead.email,
           website: lead.website || existingLead.website,
           location: lead.location || existingLead.location,
-          socialProfiles: lead.socialProfiles || existingLead.socialProfiles,
+          socialProfiles: lead.socialProfiles as Record<string, string> || existingLead.socialProfiles as Record<string, string>,
         },
       });
       return;

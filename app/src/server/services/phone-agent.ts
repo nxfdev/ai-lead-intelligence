@@ -94,10 +94,14 @@ export class SyntheticPhoneAgent implements PhoneAgent {
       else result = SYNTHETIC_RESULTS.default_negative;
     }
 
+    // Generate synthetic transcript
+    const transcript = `AI Agent: Hello, this is Sarah from LeadIntel. I'm calling about your business ${leadName ? `at ${leadName}` : ""}. How are you today?\n\nLead: I'm doing well, thank you. How can I help you?\n\nAI Agent: I'm reaching out because we help businesses like yours manage their phone calls more efficiently with our AI receptionist solution. Do you currently have a receptionist handling your calls?\n\nLead: ${result.currentSolution || "Yes, we have someone handling calls."}\n\nAI Agent: That's great! Many businesses like yours find that they miss calls during peak hours. Do you experience that issue?\n\nLead: ${result.needConfirmed ? "Yes, actually we do miss quite a few calls during busy times." : "Not really, we seem to manage okay."}\n\nAI Agent: ${result.needConfirmed ? "I'd love to show you how our AI solution can help ensure you never miss another call. Would you be open to a quick demo?" : "I understand. Well, if that changes in the future, we'd be happy to help."}\n\nLead: ${result.decisionMakerReached ? (result.needConfirmed ? "Sure, that sounds interesting. Let's schedule something." : "Maybe in the future.") : "Let me talk to my manager and get back to you."}\n\nAI Agent: Perfect! ${result.nextAction || "We'll be in touch soon."} Thank you for your time!`;
+
     return {
       id: `sim_${crypto.randomUUID()}`,
       status: "completed",
       structuredResult: result,
+      transcript,
       duration: Math.round(callDuration / 1000),
     };
   }
@@ -145,10 +149,30 @@ export class CallePhoneAgent implements PhoneAgent {
         }
       );
 
+      // Fetch transcript from events
+      let transcript: string | undefined;
+      try {
+        const events = await client.calls.listEvents(call.id);
+        const transcriptParts: string[] = [];
+        for (const event of events) {
+          const eventData = event.data as Record<string, unknown> | undefined;
+          if (event.type === "speech_to_text" && eventData?.text) {
+            const role = (eventData.role as string) || "unknown";
+            transcriptParts.push(`${role}: ${eventData.text}`);
+          }
+        }
+        if (transcriptParts.length > 0) {
+          transcript = transcriptParts.join("\n");
+        }
+      } catch (err) {
+        console.warn("Failed to fetch transcript:", err);
+      }
+
       return {
         id: call.id,
         status: call.status === "completed" ? "completed" : "failed",
         structuredResult: call.structuredResult as CallStructuredResult | undefined,
+        transcript,
         duration: undefined,
       };
     } catch (error) {

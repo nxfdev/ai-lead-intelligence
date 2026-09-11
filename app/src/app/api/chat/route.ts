@@ -1,7 +1,7 @@
 /**
  * POST /api/chat — AI chat endpoint
  *
- * Uses OpenRouter API with database context for real AI responses.
+ * Uses NVIDIA API with database context for real AI responses.
  * Includes onboarding guidance (collect criteria before research) and
  * the full list of active discovery tools.
  */
@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getToolStatuses } from "@/server/tools/registry";
+import { callLLMFreeform } from "@/lib/llm";
 
 const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -241,51 +242,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
-
-    if (!apiKey) {
-      return NextResponse.json(
-        { success: false, error: "OPENROUTER_API_KEY not configured" },
-        { status: 500 },
-      );
-    }
-
     const context = await gatherContext(leadId || undefined);
     const systemPrompt = buildSystemPrompt({
       ...context,
       selectedLead: context.selectedLeadContext,
     });
 
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-        "X-Title": "LeadIntel AI Copilot",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3.6-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: message },
-        ],
-        temperature: 0.3,
-        max_tokens: 1800,
-      }),
+    // Use NVIDIA API via callLLMFreeform
+    const aiContent = await callLLMFreeform({
+      system: systemPrompt,
+      prompt: message,
+      temperature: 0.3,
+      maxTokens: 1800,
     });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error("OpenRouter API error:", res.status, errText);
-      return NextResponse.json(
-        { success: false, error: `AI service error (${res.status})` },
-        { status: 502 },
-      );
-    }
-
-    const data = await res.json();
-    const aiContent = data.choices?.[0]?.message?.content || "I couldn't generate a response. Please try again.";
 
     const { cleanContent, actions } = parseAction(aiContent);
 

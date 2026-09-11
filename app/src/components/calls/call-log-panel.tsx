@@ -1,8 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Phone, CheckCircle2, XCircle, Clock, ChevronRight, PhoneCall, History } from "lucide-react";
+import { Phone, CheckCircle2, XCircle, Clock, ChevronRight, PhoneCall, History, FileText } from "lucide-react";
 import { formatTimeAgo } from "@/lib/utils";
+import { useState } from "react";
 
 interface CallLogPanelProps {
   onSelectLead: (leadId: string) => void;
@@ -26,6 +27,7 @@ interface CallData {
     summary: string;
     qualification: string;
     confidence: number;
+    transcript: string | null;
   } | null;
   createdAt: string;
 }
@@ -40,6 +42,8 @@ export function CallLogPanel({ onSelectLead }: CallLogPanelProps) {
     },
     refetchInterval: 5000,
   });
+
+  const [expandedCall, setExpandedCall] = useState<string | null>(null);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -102,13 +106,16 @@ export function CallLogPanel({ onSelectLead }: CallLogPanelProps) {
           <div>
             {calls.map((call) => {
               const qual = getQualificationLabel(call.result?.qualification);
+              const isExpanded = expandedCall === call.id;
               return (
                 <div
                   key={call.id}
                   className="call-log-item animate-fade-in"
-                  onClick={() => onSelectLead(call.lead.id)}
                 >
-                  <div className="flex items-start gap-3">
+                  <div
+                    className="flex items-start gap-3 cursor-pointer"
+                    onClick={() => onSelectLead(call.lead.id)}
+                  >
                     {getStatusIcon(call.status)}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -139,6 +146,26 @@ export function CallLogPanel({ onSelectLead }: CallLogPanelProps) {
                       </div>
                     </div>
                   </div>
+
+                  {call.result?.transcript && (
+                    <div className="mt-2 ml-10">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedCall(isExpanded ? null : call.id);
+                        }}
+                        className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-[10px] text-[#b094ff] transition-colors"
+                      >
+                        <FileText className="w-3 h-3" />
+                        {isExpanded ? "Hide Transcript" : "View Transcript"}
+                      </button>
+                      {isExpanded && (
+                        <div className="mt-2 p-3 rounded-lg bg-black/30 border border-white/10 text-[11px] text-[#b9aed8] whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+                          {call.result.transcript}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

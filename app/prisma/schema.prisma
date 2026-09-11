@@ -214,6 +214,7 @@ model CallResult {
   callId           String   @unique @map("call_id")
   structuredResult Json?    @map("structured_result")
   summary          String?
+  transcript       String?
   confidence       Float?
   qualifiedResult  String?  @map("qualified_result")
   createdAt        DateTime @default(now()) @map("created_at")

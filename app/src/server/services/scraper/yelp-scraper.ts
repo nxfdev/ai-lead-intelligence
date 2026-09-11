@@ -110,13 +110,13 @@ export class YelpScraper extends BaseScraper {
       
       const nameMatch = block.match(/<a[^>]*>(.*?)<\/a>/);
       const phoneMatch = block.match(/(\d{3}[-.]?\d{3}[-.]?\d{4})/);
-      const locationMatch = block.match(/<address[^>]*>(.*?)<\/address>/s);
+      const locationMatch = block.match(/<address[^>]*>([\s\S]*?)<\/address>/);
       
       if (nameMatch) {
         results.push({
           name: this.cleanHtml(nameMatch[1]),
-          phone: phoneMatch ? phoneMatch[1] : null,
-          location: locationMatch ? this.cleanHtml(locationMatch[1]) : null,
+          phone: phoneMatch ? phoneMatch[1] : undefined,
+          location: locationMatch ? this.cleanHtml(locationMatch[1]) : undefined,
         });
       }
     }
@@ -157,11 +157,11 @@ export class YelpScraper extends BaseScraper {
     
     return {
       name,
-      phone: normalizedPhone,
+      phone: normalizedPhone || undefined,
       website,
       location,
-      category: result.categories?.[0]?.title || null,
-      businessType: result.categories?.[0]?.alias || null,
+      category: result.categories?.[0]?.title || undefined,
+      businessType: result.categories?.[0]?.alias || undefined,
       discoveredFrom: this.platform,
       discoveredUrl: result.url || '',
       description: result.snippet || '',

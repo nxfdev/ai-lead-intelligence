@@ -5,7 +5,7 @@
  * Focuses on business pages and profiles with contact information.
  */
 
-import { BaseScraper, ScrapedLead, ScraperResult } from './base-scraper';
+import { BaseScraper, ScrapedLead, ScraperResult, ScraperConfig } from './base-scraper';
 import { extractPhones, findBestPhone } from './phone-extractor';
 
 export class SocialMediaScraper extends BaseScraper {
@@ -110,8 +110,8 @@ export class SocialMediaScraper extends BaseScraper {
     
     return {
       name,
-      phone,
-      website,
+      phone: phone || undefined,
+      website: website || undefined,
       discoveredFrom: 'linkedin',
       discoveredUrl: url,
       socialProfiles: { linkedin: url },
@@ -157,8 +157,8 @@ export class SocialMediaScraper extends BaseScraper {
     
     return {
       name,
-      phone,
-      website,
+      phone: phone || undefined,
+      website: website || undefined,
       discoveredFrom: 'facebook',
       discoveredUrl: url,
       socialProfiles: { facebook: url },
@@ -204,8 +204,8 @@ export class SocialMediaScraper extends BaseScraper {
     
     return {
       name,
-      phone,
-      website,
+      phone: phone || undefined,
+      website: website || undefined,
       discoveredFrom: 'instagram',
       discoveredUrl: url,
       socialProfiles: { instagram: url },
@@ -251,8 +251,8 @@ export class SocialMediaScraper extends BaseScraper {
     
     return {
       name,
-      phone,
-      website,
+      phone: phone || undefined,
+      website: website || undefined,
       discoveredFrom: 'x',
       discoveredUrl: url,
       socialProfiles: { x: url },
