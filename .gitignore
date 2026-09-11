@@ -26,6 +26,9 @@ app/prisma/*.db-journal
 app/.env
 app/.env*.local
 
+# Usage data
+app/data/
+
 # Logs
 *.log
 npm-debug.log*
