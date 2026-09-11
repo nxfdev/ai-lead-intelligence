@@ -113,19 +113,19 @@ export async function runPipeline(taskId: string, organizationId: string): Promi
     await emitEvent(organizationId, taskId, "task.enriching", {});
 
     const enrichmentProvider = createEnrichmentProvider();
-    
+
     for (const lead of createdLeads) {
       const rawLead = rawLeads.find((r) => r.name === lead.name);
       if (!rawLead) continue;
 
-      // Enrich the lead
-      const enrichment = await enrichmentProvider.enrich(rawLead);
+      const { enrichment, evidenceItems, phone: enrichedPhone } = await enrichmentProvider.enrich(rawLead);
 
-      // Update lead with enrichment data
+      // Backfill phone from website if the raw lead had none
       await prisma.lead.update({
         where: { id: lead.id },
         data: {
           status: "ENRICHED",
+          ...(!lead.phone && enrichedPhone ? { phone: enrichedPhone } : {}),
           profileJson: {
             ...((lead.profileJson as Record<string, unknown>) || {}),
             enrichment,
@@ -133,8 +133,6 @@ export async function runPipeline(taskId: string, organizationId: string): Promi
         },
       });
 
-      // Get and store evidence
-      const evidenceItems = enrichmentProvider.getEvidenceForLead(lead.name);
       for (const ev of evidenceItems) {
         await prisma.evidence.create({
           data: {
@@ -143,7 +141,7 @@ export async function runPipeline(taskId: string, organizationId: string): Promi
             claim: ev.claim,
             source: ev.source,
             sourceReference: ev.sourceReference,
-            observedAt: new Date(ev.observedAt),
+            observedAt: ev.observedAt ? new Date(ev.observedAt) : new Date(),
             confidence: ev.confidence,
           },
         });

@@ -59,6 +59,25 @@ export function ChatPanel({ taskId, selectedLeadId, onTaskCreated, onActive }: C
   const [active, setActive] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const idCounterRef = useRef(0);
+  const [hasCriteria, setHasCriteria] = useState(true);
+  const onboardingSuggestions = [
+    "I sell AI phone receptionists for dental clinics in Austin, TX",
+    "Find plumbing businesses in Houston needing after-hours call handling",
+    "Law firms in Dallas with 20+ staff for legal intake software",
+  ];
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/criteria")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d.success && !d.data?.criteria) setHasCriteria(false);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const nextMessageId = (prefix: string) => {
     idCounterRef.current += 1;
@@ -190,7 +209,79 @@ export function ChatPanel({ taskId, selectedLeadId, onTaskCreated, onActive }: C
         setIsLoading(false);
       }
     } else if (action.type === "update_criteria") {
-      sendMessage("Show current lead criteria and let me edit them");
+      await handleUpdateCriteria(action.payload as Record<string, unknown> | undefined);
+    }
+  };
+
+  const handleUpdateCriteria = async (payload?: Record<string, unknown>) => {
+    const newCriteria = payload?.criteria as Record<string, unknown> | undefined;
+    const newProfile = payload?.profile as Record<string, unknown> | undefined;
+
+    try {
+      setIsLoading(true);
+
+      if (newCriteria || newProfile) {
+        const res = await fetch("/api/criteria", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ criteria: newCriteria, profile: newProfile }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          setHasCriteria(true);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: nextMessageId("criteria"),
+              role: "assistant",
+              content:
+                "**Target Criteria Saved!**\n\nYour ideal customer profile is now locked in. Ask me to **discover leads** or hit the Start Research action to begin scraping real prospects from Google Maps, web search, and directories.",
+              timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            },
+          ]);
+          queryClient.invalidateQueries({ queryKey: ["leads"] });
+        }
+      } else {
+        const res = await fetch("/api/criteria");
+        const data = await res.json();
+        const c = data?.data?.criteria as Record<string, unknown> | undefined;
+        if (data.success && c) setHasCriteria(true);
+
+        const summary = c
+          ? [
+              `**Current Lead Criteria**`,
+              `- Industry: ${((c.industry as string[]) || []).join(", ") || "Not set"}`,
+              `- Location: ${(c.location as Record<string, unknown>)?.city || "Not set"}, ${(c.location as Record<string, unknown>)?.state || ""} (${(c.location as Record<string, unknown>)?.radiusMiles || "?"} mi)`,
+              `- Employees: ${c.minEmployees ?? "?"}–${c.maxEmployees ?? "?"}`,
+              `- Required signals: ${((c.requiredSignals as string[]) || []).join(", ") || "None"}`,
+              `- Excluded: ${((c.excluded as string[]) || []).join(", ") || "None"}`,
+            ].join("\n")
+          : "**No criteria saved yet.** Tell me what you sell and where, and I'll capture your target profile.";
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: nextMessageId("criteria"),
+            role: "assistant",
+            content: summary,
+            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          },
+        ]);
+      }
+    } catch (err) {
+      console.error("Criteria save error:", err);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: nextMessageId("criteria-err"),
+          role: "assistant",
+          content: "I ran into a problem saving the criteria. Please try again.",
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -454,6 +545,28 @@ export function ChatPanel({ taskId, selectedLeadId, onTaskCreated, onActive }: C
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Onboarding chips */}
+      {!hasCriteria && (
+        <div className="px-3 flex flex-wrap items-center gap-1.5 flex-shrink-0">
+          <span className="text-[10px] uppercase tracking-[0.15em] text-[#8f86a8] pr-0.5">
+            Set your target:
+          </span>
+          {onboardingSuggestions.map((s) => (
+            <button
+              key={s}
+              onClick={() => {
+                markActive();
+                sendMessage(s);
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#7a52ff]/10 hover:bg-[#7a52ff]/20 border border-[#7a52ff]/30 text-[#d6caff] hover:border-[#7a52ff]/60 whitespace-nowrap transition text-[11px] font-medium"
+            >
+              <Sliders className="w-3 h-3 text-[#b094ff]" />
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Quick prompts */}
       <div className="px-3 py-2 overflow-x-auto flex items-center gap-1.5 flex-shrink-0">

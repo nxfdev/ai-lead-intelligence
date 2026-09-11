@@ -226,8 +226,24 @@ export interface LeadDiscoveryProvider {
 
 // ─── Lead Enrichment Provider ───────────────────────────────
 
+export interface LeadEnrichmentResult {
+  enrichment: LeadEnrichment;
+  evidenceItems: EvidenceItem[];
+  phone?: string;
+}
+
 export interface LeadEnrichmentProvider {
-  enrich(lead: RawLead): Promise<LeadEnrichment>;
+  enrich(lead: RawLead): Promise<LeadEnrichmentResult>;
+}
+
+// ─── Discovery Tools ─────────────────────────────────────────
+
+export interface DiscoveryToolStatus {
+  id: string;
+  label: string;
+  enabled: boolean;
+  keyConfigured: boolean;
+  lastRun: { at: string; discovered: number; error?: string } | null;
 }
 
 // ─── Chat ───────────────────────────────────────────────────

@@ -1,11 +1,25 @@
 /**
- * Enrichment Service — Synthetic Lead Enrichment
- * 
- * Enriches raw leads with additional business data and generates evidence.
+ * Enrichment Service
+ *
+ * Three modes behind ENRICHMENT_MODE:
+ *   full   – fetch website + LLM analysis (real evidence)
+ *   rules  – fetch website + keyword heuristics (no tokens)
+ *   synthetic – demo data (original map)
  */
 
-import type { LeadEnrichmentProvider, RawLead, LeadEnrichment, EvidenceItem } from "@/lib/types";
+import type {
+  LeadEnrichmentProvider,
+  LeadEnrichmentResult,
+  RawLead,
+  LeadEnrichment,
+  EvidenceItem,
+} from "@/lib/types";
+import { callLLM } from "@/lib/llm";
+import { z } from "zod/v4";
+import { fetchHtml, stripHtml, normalizePhone, phoneInText } from "../tools/lib";
 import { delay } from "@/lib/utils";
+
+// ─── Enrichment data map (synthetic fallback) ───────────────
 
 const ENRICHMENT_DATA: Record<string, LeadEnrichment & { evidenceItems: EvidenceItem[] }> = {
   "Austin Smile Center": {
@@ -190,34 +204,302 @@ const ENRICHMENT_DATA: Record<string, LeadEnrichment & { evidenceItems: Evidence
   },
 };
 
-// Default enrichment for leads not in the map
-const DEFAULT_ENRICHMENT: LeadEnrichment & { evidenceItems: EvidenceItem[] } = {
-  description: "Local dental practice.",
-  services: ["General Dentistry"],
-  hours: "Mon-Fri 9AM-5PM",
-  reviewSignals: [],
-  technologyIndicators: [],
-  employeeCount: 10,
-  evidenceItems: [
-    { type: "OBSERVED", claim: "Business listing found in directory.", source: "business_directory", observedAt: new Date().toISOString(), confidence: 0.80 },
-  ],
-};
+// ─── Site signals extraction (keyless) ───────────────────────
 
-export class SyntheticEnrichmentProvider implements LeadEnrichmentProvider {
-  async enrich(lead: RawLead): Promise<LeadEnrichment> {
-    await delay(800); // Simulate enrichment processing
+interface SiteSignals {
+  phone?: string;
+  hasOnlineBooking: boolean;
+  hasHours: boolean;
+}
 
-    const data = ENRICHMENT_DATA[lead.name] || DEFAULT_ENRICHMENT;
-    const { evidenceItems: _, ...enrichment } = data;
-    return enrichment;
+function extractSiteSignals(html: string, text: string): SiteSignals {
+  const telMatch = /href="tel:([^"]+)"/i.exec(html);
+  const phone = telMatch ? normalizePhone(telMatch[1]) : undefined;
+  const fallbackPhone = !phone ? phoneInText(html) || phoneInText(text) : undefined;
+
+  const hasOnlineBooking =
+    /online\s*(?:book(?:ing)?|schedul(?:e|ing)|appoint(?:ment)?|reserv(?:e|ation))|book\s*now|schedule\s*appointment/i.test(text);
+
+  const hasHours =
+    /(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*[\s\S]{0,30}(?:\d{1,2}[\s.:]\d{2}\s*(?:AM|PM|am|pm))/i.test(text);
+
+  return { phone: phone || fallbackPhone || undefined, hasOnlineBooking, hasHours };
+}
+
+// ─── LLM-enrichment schema ──────────────────────────────────
+
+const LLMEnrichmentSchema = z.object({
+  description: z.string().nullable().optional(),
+  services: z.array(z.string()),
+  hours: z.string().nullable().optional(),
+  reviewSignals: z.array(z.string()),
+  technologyIndicators: z.array(z.string()),
+  decisionMaker: z.string().nullable().optional(),
+  decisionMakerTitle: z.string().nullable().optional(),
+  employeeCount: z.number().nullable().optional(),
+  evidenceItems: z.array(
+    z.object({
+      type: z.enum(["OBSERVED", "INFERRED", "VERIFIED"]),
+      claim: z.string(),
+      source: z.string(),
+      confidence: z.number().min(0).max(1).nullable().optional(),
+    })
+  ),
+});
+
+type LLMEnrichmentOutput = z.infer<typeof LLMEnrichmentSchema>;
+
+// ─── Rules-based signal builder ──────────────────────────────
+
+function enrichViaRules(text: string, signals: SiteSignals): LeadEnrichmentResult {
+  const descSlice = text.slice(0, 200).trim();
+
+  const techIndicators: string[] = [];
+  if (signals.hasOnlineBooking) techIndicators.push("Has online booking");
+  else techIndicators.push("No online booking detected");
+
+  const evidenceItems: EvidenceItem[] = [];
+  if (signals.phone) {
+    evidenceItems.push({
+      type: "OBSERVED",
+      claim: `Contact phone number found on website: ${signals.phone}`,
+      source: "website_phone_extraction",
+      observedAt: new Date().toISOString(),
+      confidence: 0.92,
+    });
+  }
+  if (signals.hasOnlineBooking) {
+    evidenceItems.push({
+      type: "OBSERVED",
+      claim: "Website includes an online booking / scheduling mechanism.",
+      source: "website_analysis",
+      observedAt: new Date().toISOString(),
+      confidence: 0.90,
+    });
+  } else {
+    evidenceItems.push({
+      type: "OBSERVED",
+      claim: "No online booking or scheduling mechanism detected on website.",
+      source: "website_analysis",
+      observedAt: new Date().toISOString(),
+      confidence: 0.85,
+    });
+  }
+  if (signals.hasHours) {
+    evidenceItems.push({
+      type: "OBSERVED",
+      claim: "Operating hours are listed on the website.",
+      source: "website_analysis",
+      observedAt: new Date().toISOString(),
+      confidence: 0.80,
+    });
   }
 
-  getEvidenceForLead(leadName: string): EvidenceItem[] {
-    const data = ENRICHMENT_DATA[leadName] || DEFAULT_ENRICHMENT;
-    return data.evidenceItems;
+  return {
+    enrichment: {
+      description: descSlice || undefined,
+      services: [],
+      hours: signals.hasHours ? "Hours listed on website" : undefined,
+      reviewSignals: [],
+      technologyIndicators: techIndicators,
+      employeeCount: undefined,
+    },
+    evidenceItems,
+    phone: signals.phone,
+  };
+}
+
+// ─── LLM-enrichment (full mode) ─────────────────────────────
+
+async function enrichViaLLM(text: string, signals: SiteSignals, raw: RawLead): Promise<LeadEnrichmentResult> {
+  const output = await callLLM<LLMEnrichmentOutput>({
+    system:
+      "You are an AI business analyst analyzing a company website to help qualify them as a sales lead. " +
+      "Be specific, reference what you observed in the text. Do NOT fabricate claims unsupported by the content. " +
+      "Respond ONLY with the requested JSON object.",
+    prompt:
+      `Analyze this company website and produce a structured Lead Enrichment with evidence items.\n\n` +
+      `Website URL: ${raw.website}\n` +
+      `Lead Name: ${raw.name}\n` +
+      `Extracted text (first 6000 chars):\n${text.slice(0, 6000)}\n\n` +
+      `Pre-extracted signals:\n` +
+      `- Phone found on page: ${signals.phone || "none"}\n` +
+      `- Online booking keywords: ${signals.hasOnlineBooking}\n` +
+      `- Hours content detected: ${signals.hasHours}\n\n` +
+      `Required JSON schema:\n` +
+      `{\n` +
+      `  "description": string | null,\n` +
+      `  "services": string[],\n` +
+      `  "hours": string | null,\n` +
+      `  "reviewSignals": string[],\n` +
+      `  "technologyIndicators": string[],\n` +
+      `  "decisionMaker": string | null,\n` +
+      `  "decisionMakerTitle": string | null,\n` +
+      `  "employeeCount": number | null,\n` +
+      `  "evidenceItems": [\n` +
+      `    { "type": "OBSERVED"|"INFERRED"|"VERIFIED", "claim": string, "source": string, "confidence": number|null }\n` +
+      `  ]\n` +
+      `}`,
+    schema: LLMEnrichmentSchema,
+    temperature: 0.2,
+    maxTokens: 8000,
+  });
+
+  const evidenceItems: EvidenceItem[] = output.evidenceItems.map((e) => ({
+    type: e.type,
+    claim: e.claim,
+    source: e.source,
+    observedAt: new Date().toISOString(),
+    confidence: e.confidence ?? undefined,
+  }));
+
+  if (signals.phone) {
+    evidenceItems.unshift({
+      type: "OBSERVED",
+      claim: `Contact phone number found on website: ${signals.phone}`,
+      source: "website_phone_extraction",
+      observedAt: new Date().toISOString(),
+      confidence: 0.92,
+    });
+  }
+
+  return {
+    enrichment: {
+      description: output.description ?? undefined,
+      services: output.services,
+      hours: output.hours ?? undefined,
+      reviewSignals: output.reviewSignals,
+      technologyIndicators: output.technologyIndicators,
+      decisionMaker: output.decisionMaker ?? undefined,
+      decisionMakerTitle: output.decisionMakerTitle ?? undefined,
+      employeeCount: output.employeeCount ?? undefined,
+    },
+    evidenceItems,
+    phone: signals.phone,
+  };
+}
+
+// ─── Fetch provider ──────────────────────────────────────────
+
+class FetchEnrichmentProvider implements LeadEnrichmentProvider {
+  private useLlm: boolean;
+
+  constructor() {
+    const mode = (process.env.ENRICHMENT_MODE || "full").toLowerCase();
+    this.useLlm = mode === "full";
+  }
+
+  async enrich(raw: RawLead): Promise<LeadEnrichmentResult> {
+    if (!raw.website) {
+      return noWebsiteFallback(raw);
+    }
+
+    let html = "";
+    let text = "";
+    try {
+      html = await fetchHtml(raw.website, 8000);
+      text = stripHtml(html).slice(0, 8000);
+    } catch {
+      return fetchFailedFallback(raw);
+    }
+
+    const signals = extractSiteSignals(html, text);
+
+    try {
+      return this.useLlm
+        ? await enrichViaLLM(text, signals, raw)
+        : enrichViaRules(text, signals);
+    } catch {
+      return enrichViaRules(text, signals);
+    }
   }
 }
 
-export function createEnrichmentProvider(): SyntheticEnrichmentProvider {
-  return new SyntheticEnrichmentProvider();
+// ─── Synthetic provider ──────────────────────────────────────
+
+class SyntheticEnrichmentProvider implements LeadEnrichmentProvider {
+  async enrich(raw: RawLead): Promise<LeadEnrichmentResult> {
+    await delay(600);
+    const data = ENRICHMENT_DATA[raw.name];
+    if (data) {
+      const { evidenceItems, ...enrichment } = data;
+      return { enrichment, evidenceItems, phone: raw.phone || undefined };
+    }
+    return {
+      enrichment: {
+        description: "Local business.",
+        services: [],
+        hours: undefined,
+        reviewSignals: [],
+        technologyIndicators: [],
+        employeeCount: raw.employeeCount,
+      },
+      evidenceItems: [
+        {
+          type: "OBSERVED",
+          claim: "Business listing found in directory.",
+          source: "business_directory",
+          observedAt: new Date().toISOString(),
+          confidence: 0.80,
+        },
+      ],
+      phone: raw.phone || undefined,
+    };
+  }
+}
+
+// ─── Factory ─────────────────────────────────────────────────
+
+export function createEnrichmentProvider(): LeadEnrichmentProvider {
+  const mode = (process.env.ENRICHMENT_MODE || "full").toLowerCase();
+  if (mode === "synthetic") return new SyntheticEnrichmentProvider();
+  return new FetchEnrichmentProvider();
+}
+
+// ─── Fallbacks ───────────────────────────────────────────────
+
+function noWebsiteFallback(raw: RawLead): LeadEnrichmentResult {
+  return {
+    enrichment: {
+      description: `Business listing for ${raw.name}.`,
+      services: [],
+      hours: undefined,
+      reviewSignals: [],
+      technologyIndicators: ["No website available"],
+      employeeCount: raw.employeeCount,
+    },
+    evidenceItems: [
+      {
+        type: "OBSERVED",
+        claim: `No website available for ${raw.name}.`,
+        source: "discovery",
+        observedAt: new Date().toISOString(),
+        confidence: 0.95,
+      },
+    ],
+    phone: raw.phone || undefined,
+  };
+}
+
+function fetchFailedFallback(raw: RawLead): LeadEnrichmentResult {
+  return {
+    enrichment: {
+      description: `Could not fetch website for ${raw.name}.`,
+      services: [],
+      hours: undefined,
+      reviewSignals: [],
+      technologyIndicators: ["Website unreachable"],
+      employeeCount: raw.employeeCount,
+    },
+    evidenceItems: [
+      {
+        type: "OBSERVED",
+        claim: `Website ${raw.website} was unreachable or returned an error.`,
+        source: "website_fetch",
+        observedAt: new Date().toISOString(),
+        confidence: 0.90,
+      },
+    ],
+    phone: raw.phone || undefined,
+  };
 }
