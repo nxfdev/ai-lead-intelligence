@@ -47,6 +47,13 @@ export function AladdinLampChatbot({
   const [isHovered, setIsHovered] = useState(false);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTask, setActiveTask] = useState<{ id: string; status: string } | null>(null);
+  const [taskProgress, setTaskProgress] = useState<{
+    discovered: number;
+    enriched: number;
+    scored: number;
+    qualified: number;
+  } | null>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome-genie",
@@ -66,6 +73,8 @@ export function AladdinLampChatbot({
 const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastToggleRef = useRef(0);
   const messageIdCounter = useRef(0);
+  const lastUserMsgRef = useRef<string>("");
+  const taskPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
 // Sync with external opener
   useEffect(() => {
@@ -92,6 +101,148 @@ const messagesEndRef = useRef<HTMLDivElement>(null);
     if (onToggleExternal) onToggleExternal();
   };
 
+  const appendActionMessage = (content: string) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `sys-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        role: "assistant",
+        content,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      },
+    ]);
+  };
+
+  const stopTaskPolling = () => {
+    if (taskPollRef.current) {
+      clearInterval(taskPollRef.current);
+      taskPollRef.current = null;
+    }
+  };
+
+  useEffect(() => stopTaskPolling, []);
+
+  const pollTask = (taskId: string) => {
+    stopTaskPolling();
+    setActiveTask({ id: taskId, status: "PIPELINING" });
+    setTaskProgress({ discovered: 0, enriched: 0, scored: 0, qualified: 0 });
+
+    taskPollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/tasks/${taskId}`);
+        const json = await res.json();
+        if (!json.success) return;
+        const t = json.data;
+        setActiveTask({ id: t.id, status: t.status });
+        setTaskProgress({
+          discovered: t.progress?.discovered ?? 0,
+          enriched: t.progress?.enriched ?? 0,
+          scored: t.progress?.scored ?? 0,
+          qualified: t.progress?.qualified ?? 0,
+        });
+
+        if (t.status === "COMPLETED") {
+          stopTaskPolling();
+          appendActionMessage(`✅ **Research complete!**\n\nOrchestrator found **${t.leadCount} leads** in task \`${t.id.slice(0, 8)}...\`. They are now scored and ready in your console — ask me to call the top one!`);
+        } else if (t.status === "FAILED" || t.status === "ERROR" || t.status === "CANCELLED") {
+          stopTaskPolling();
+          appendActionMessage(`❌ **Research stopped** with status \`${t.status}\`: ${t.errorMessage || "Unknown error"}`);
+        }
+      } catch {
+        // poll again next tick
+      }
+    }, 3000);
+  };
+
+  const startResearch = async (goal: string) => {
+    if (isLoading) return;
+    try {
+      setIsLoading(true);
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goal }),
+      });
+      const json = await res.json();
+      if (json.success && json.data?.taskId) {
+        appendActionMessage(`⚡ **Research Task Started!**\n\nTask ID: \`${json.data.taskId.slice(0, 8)}...\`\n\n> ${goal}`);
+        if (onTaskCreated) onTaskCreated(json.data.taskId);
+        pollTask(json.data.taskId);
+      } else {
+        appendActionMessage(`❌ Could not start research: ${json.error || "Unknown error"}`);
+      }
+    } catch (err) {
+      console.error("Research start error:", err);
+      appendActionMessage("❌ Could not start research. Is the dev server running?");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const dispatchCall = async (leadId?: string) => {
+    if (isLoading) return;
+    try {
+      setIsLoading(true);
+
+      let id = leadId;
+      if (!id) {
+        const res = await fetch("/api/leads");
+        const json = await res.json();
+        const leads = json.data || [];
+        const target = [...leads].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0];
+        if (!target) {
+          appendActionMessage("⚠️ **No leads in the pipeline yet.** Ask me to start research first — then I can dispatch CALL-E calls.");
+          return;
+        }
+        id = target.id;
+      }
+
+      const res = await fetch(`/api/leads/${id}/call`, { method: "POST" });
+      const json = await res.json();
+      if (json.success) {
+        appendActionMessage(`📞 **CALL-E Voice Call Dispatched!**\n\nCall ID: \`${(json.data.callId || "…").slice(0, 8)}\` · Status: \`${json.data.status}\`\n\nThe AI voice agent is running a structured qualification dialog — transcript and score stream into the Call Activity panel.`);
+        if (onTriggerCall && id) onTriggerCall(id);
+      } else {
+        appendActionMessage(`❌ Call dispatch failed: ${json.error || "Unknown error"}`);
+      }
+    } catch (err) {
+      console.error("Call dispatch error:", err);
+      appendActionMessage("❌ Could not dispatch the call. Is the dev server running?");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveCriteria = async (payload?: Record<string, unknown>) => {
+    const criteria = payload?.criteria as Record<string, unknown> | undefined;
+    const profile = payload?.profile as Record<string, unknown> | undefined;
+
+    if (!criteria && !profile) {
+      appendActionMessage("🧞 **I need your ICP specifics to save them.** Tell me what you sell, where you sell it, and who the ideal buyer is.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const res = await fetch("/api/criteria", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ criteria, profile }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        appendActionMessage("✅ **Target Criteria Saved!**\n\nYour ideal customer profile is locked in. Say **find me leads** or hit **Start Research** to fire up the pipeline.");
+      } else {
+        appendActionMessage(`❌ Could not save criteria: ${json.error || "Validation failed"}`);
+      }
+    } catch (err) {
+      console.error("Criteria save error:", err);
+      appendActionMessage("❌ Could not save criteria. Is the dev server running?");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleChipClick = async (actionType: string) => {
     if (actionType === "find_leads") {
       sendMessage("Find high-value commercial HVAC contractors in Dallas, TX needing AI dispatchers");
@@ -107,6 +258,7 @@ const messagesEndRef = useRef<HTMLDivElement>(null);
   const sendMessage = async (textToSend?: string) => {
     const messageContent = (textToSend || input).trim();
     if (!messageContent || isLoading) return;
+    lastUserMsgRef.current = messageContent;
 
     const userMessage: Message = {
       id: `user-${messageIdCounter.current}`,
@@ -161,33 +313,28 @@ const messagesEndRef = useRef<HTMLDivElement>(null);
     }
   };
 
-  const handleActionClick = (action: ActionItem) => {
+  const handleActionClick = async (action: ActionItem) => {
     if (action.type === "call_lead") {
-      if (onTriggerCall) onTriggerCall("lead-1");
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `sys-${Date.now()}`,
-          role: "assistant",
-          content: "📞 **CALL-E Voice Agent Dispatched!** Dialing Sarah Johnson at BrightTech Solutions. Audio transcript and qualification score will stream in the Call Activity panel.",
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        },
-      ]);
+      await dispatchCall(action.payload?.leadId as string | undefined);
     } else if (action.type === "start_research") {
-      if (onTaskCreated) onTaskCreated("task-demo");
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `sys-${Date.now()}`,
-          role: "assistant",
-          content: "⚡ **Magic Research Pipeline Initiated!** Autonomous scrapers are querying directories, Google maps, and company registries for top prospects.",
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        },
-      ]);
+      const goal =
+        (action.payload?.goal as string) ||
+        lastUserMsgRef.current ||
+        "Find qualified leads in Austin, TX";
+      await startResearch(goal);
+    } else if (action.type === "update_criteria") {
+      await saveCriteria(action.payload as Record<string, unknown> | undefined);
+    } else if (action.type === "explain_lead") {
+      sendMessage(`Explain in detail why lead ${(action.payload?.label as string) || ""} scored the way it did`);
     } else {
       sendMessage(`Execute: ${action.label}`);
     }
   };
+
+  const TASK_STAGES = ["CREATED", "PLANNING", "DISCOVERING", "ENRICHING", "SCORING", "READY_FOR_REVIEW", "COMPLETED"];
+    const stageIdx = activeTask ? TASK_STAGES.indexOf(activeTask.status) : -1;
+    const progressPct =
+      stageIdx < 0 ? (activeTask ? 8 : 0) : Math.round(((stageIdx + 1) / TASK_STAGES.length) * 100);
 
   return (
     <>
@@ -323,6 +470,29 @@ const messagesEndRef = useRef<HTMLDivElement>(null);
                     </span>
                   </div>
                 ))}
+
+{activeTask && (
+                  <div
+                    className="w-full rounded-2xl p-3 text-[11px] shadow-lg"
+                    style={{ background: "rgba(10,14,40,0.95)", border: "1px solid rgba(245,158,11,0.4)" }}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-amber-300 font-bold flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3 animate-pulse" />
+                        Orchestrator · <span className="text-cyan-300">{activeTask.status}</span>
+                      </span>
+                      <span className="text-slate-400">
+                        {taskProgress?.discovered ?? 0} leads
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-amber-400 to-cyan-400 transition-all duration-700"
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {isLoading && (
                   <div className="flex items-center gap-2 p-3 rounded-2xl border border-cyan-400/30 text-cyan-300 text-xs w-max shadow-lg"

@@ -15,10 +15,12 @@ export async function GET(request: NextRequest) {
     const minScore = parseInt(url.searchParams.get("minScore") || "0");
     const qualification = url.searchParams.get("qualification");
     const search = url.searchParams.get("search");
+    const source = url.searchParams.get("source");
 
     const where: Record<string, unknown> = { organizationId: DEFAULT_ORG_ID };
     if (minScore > 0) where.score = { gte: minScore };
     if (qualification && qualification !== "all") where.qualification = qualification;
+    if (source && source !== "all") where.source = source;
     if (search) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
@@ -49,6 +51,7 @@ export async function GET(request: NextRequest) {
         website: lead.website,
         location: lead.location,
         category: lead.category,
+        source: lead.source,
         score: lead.score,
         scoreComponents: lead.scoreComponents,
         status: lead.status,
@@ -79,6 +82,20 @@ export async function GET(request: NextRequest) {
             }
           : null,
         createdAt: lead.createdAt,
+        apollo:
+          lead.source === "apollo"
+            ? {
+                title: (lead.profileJson as Record<string, unknown> | null)?.title ?? null,
+                organization: (lead.profileJson as Record<string, unknown> | null)?.organization ?? null,
+                seniority: (lead.profileJson as Record<string, unknown> | null)?.seniority ?? null,
+                email: (lead.profileJson as Record<string, unknown> | null)?.email ?? null,
+                emailStatus: (lead.profileJson as Record<string, unknown> | null)?.emailStatus ?? null,
+                phoneStatus: (lead.profileJson as Record<string, unknown> | null)?.phoneStatus ?? null,
+                linkedinUrl: (lead.profileJson as Record<string, unknown> | null)?.linkedinUrl ?? null,
+                photoUrl: (lead.profileJson as Record<string, unknown> | null)?.photoUrl ?? null,
+                revealRequired: (lead.profileJson as Record<string, unknown> | null)?.revealRequired ?? true,
+              }
+            : null,
       })),
     });
   } catch (error) {

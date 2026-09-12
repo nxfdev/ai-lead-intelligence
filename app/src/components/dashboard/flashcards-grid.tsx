@@ -28,11 +28,31 @@ import {
   Activity,
 } from "lucide-react";
 import { Flashcard3D } from "./flashcard-3d";
+import { ApolloLeadsFlashcard } from "./apollo-leads-flashcard";
 
 interface FlashcardsGridProps {
   onSelectLead: (leadId: string) => void;
   onTriggerCall: (leadId: string) => void;
   onOpenGenie: () => void;
+}
+
+interface LeadRow {
+  id: string;
+  name: string;
+  phone?: string | null;
+  score?: number | null;
+  location?: string | null;
+  category?: string | null;
+  decisionMaker?: string | null;
+  qualification?: string | null;
+  createdAt?: string | null;
+}
+
+interface CallRow {
+  id: string;
+  status?: string | null;
+  duration?: unknown;
+  lead?: { name?: string | null; phone?: string | null } | null;
 }
 
 export function FlashcardsGrid({
@@ -48,7 +68,7 @@ export function FlashcardsGrid({
   const [activeCallSimulating, setActiveCallSimulating] = useState<string | null>(null);
 
   // Fetch real leads from SQLite backend
-  const { data: leadsData } = useQuery({
+  const { data: leadsData } = useQuery<LeadRow[]>({
     queryKey: ["leads"],
     queryFn: async () => {
       const res = await fetch("/api/leads");
@@ -59,7 +79,7 @@ export function FlashcardsGrid({
   });
 
   // Fetch real calls from backend
-  const { data: callsData } = useQuery({
+  const { data: callsData } = useQuery<CallRow[]>({
     queryKey: ["calls"],
     queryFn: async () => {
       const res = await fetch("/api/calls");
@@ -83,8 +103,80 @@ export function FlashcardsGrid({
   const totalCallsCount = callsData?.length ? 890 + callsData.length : 892;
   const bookedMeetingsCount = 248;
 
+  const timeAgo = (iso?: string) => {
+    if (!iso) return "recently";
+    const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+    if (s < 60) return `${s}s ago`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m} min ago`;
+    return `${Math.floor(m / 60)}h ago`;
+  };
+
+  const qualLabel: Record<string, string> = {
+    PENDING: "Pending",
+    CANDIDATE: "Candidate",
+    POTENTIAL: "Potential",
+    HIGH_INTENT: "High Intent",
+    QUALIFIED: "Qualified",
+    CONTACTED: "Contacted",
+    DISQUALIFIED: "Disqualified",
+  };
+
+  const qualBadge: Record<string, string> = {
+    QUALIFIED: "bg-emerald-500/20 text-emerald-300 border-emerald-400/40",
+    HIGH_INTENT: "bg-orange-500/20 text-orange-300 border-orange-400/40",
+    POTENTIAL: "bg-cyan-500/20 text-cyan-300 border-cyan-400/40",
+    CANDIDATE: "bg-amber-500/20 text-amber-300 border-amber-400/40",
+    CONTACTED: "bg-purple-500/20 text-purple-300 border-purple-400/40",
+    DISQUALIFIED: "bg-rose-500/20 text-rose-300 border-rose-400/40",
+  };
+
+  const defaultLeadBadge = "bg-emerald-500/20 text-emerald-300 border-emerald-400/40";
+  const callBadgeMap: Record<string, string> = {
+    COMPLETED: "bg-emerald-500/20 text-emerald-300 border-emerald-400/40",
+    IN_PROGRESS: "bg-cyan-500/20 text-cyan-300 border-cyan-400/40",
+    PENDING: "bg-amber-500/20 text-amber-300 border-amber-400/40",
+    FAILED: "bg-rose-500/20 text-rose-300 border-rose-400/40",
+    NO_ANSWER: "bg-rose-500/20 text-rose-300 border-rose-400/40",
+  };
+  const defaultCallBadge = "bg-slate-500/20 text-slate-300 border-slate-400/40";
+
+  const formatDuration = (d: unknown) => {
+    if (typeof d === "number" && !Number.isNaN(d)) return `${Math.floor(d / 60)}m ${d % 60}s`;
+    if (typeof d === "string" && d) return d;
+    return "—";
+  };
+
+  // ── Real pipeline data (falls back to the curated demo showcases below) ──
+  const realLeadIds = new Set((leadsData || []).map((l) => l.id));
+
+  const realRecentLeads = (leadsData || []).slice(0, 4).map((l) => ({
+    id: l.id,
+    name: l.name,
+    role: [l.decisionMaker, l.category].filter(Boolean).join(" · ") || "Business Prospect",
+    time: timeAgo(l.createdAt || undefined),
+    status: qualLabel[l.qualification || ""] || "Pending",
+    badgeColor: qualBadge[l.qualification || ""] || defaultLeadBadge,
+    phone: l.phone || "",
+    score: l.score ?? 0,
+  }));
+
+  const realCalls = (callsData || []).slice(0, 4).map((c) => ({
+    id: c.id,
+    phone: c.lead?.phone || c.lead?.name || "—",
+    duration: formatDuration(c.duration),
+    status: c.status || "PENDING",
+    badge: callBadgeMap[c.status || ""] || defaultCallBadge,
+  }));
+
+  const handleTriggerRealCall = () => {
+    const top = (leadsData || [])[0] as { id?: string } | undefined;
+    if (top?.id) onTriggerCall(top.id);
+    else handleSimulateCall("+1 (800) 555-0199", "New Lead");
+  };
+
   // Mock initial leads from the image + real DB leads
-  const displayRecentLeads = [
+  const mockRecentLeads = [
     {
       id: "sarah-j",
       name: "Sarah Johnson",
@@ -118,7 +210,7 @@ export function FlashcardsGrid({
   ];
 
   // Call activity logs from the image
-  const displayCalls = [
+  const mockCalls = [
     {
       id: "call-1",
       phone: "+1 (415) 555-0123",
@@ -148,6 +240,9 @@ export function FlashcardsGrid({
       badge: "bg-emerald-500/20 text-emerald-300 border-emerald-400/40",
     },
   ];
+
+  const displayRecentLeads = realRecentLeads.length ? realRecentLeads : mockRecentLeads;
+  const displayCalls = realCalls.length ? realCalls : mockCalls;
 
   const handleSimulateCall = (phone: string, leadName: string) => {
     setActiveCallSimulating(phone);
@@ -306,7 +401,7 @@ export function FlashcardsGrid({
                         {lead.status}
                       </span>
                       <button
-                        onClick={() => handleSimulateCall(lead.phone, lead.name)}
+                        onClick={() => (realLeadIds.has(lead.id) ? onTriggerCall(lead.id) : handleSimulateCall(lead.phone, lead.name))}
                         className="p-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/25 border border-amber-400/40 text-amber-300 transition cursor-pointer"
                         title="Call with CALL-E Voice"
                       >
@@ -396,7 +491,7 @@ export function FlashcardsGrid({
                 CALL-E Voice Synthesizer Ready
               </span>
               <button
-                onClick={() => handleSimulateCall("+1 (800) 555-0199", "New Lead")}
+                onClick={handleTriggerRealCall}
                 className="px-4 py-2 rounded-xl btn-aladdin-primary text-xs font-bold text-slate-950 flex items-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.3)] cursor-pointer"
               >
                 <PhoneCall className="w-3.5 h-3.5" />
@@ -537,7 +632,7 @@ export function FlashcardsGrid({
                     <div className="flex items-center gap-2">
                       <span className="font-extrabold text-orange-400">{lead.score}</span>
                       <button
-                        onClick={() => handleSimulateCall(lead.phone, lead.name)}
+                        onClick={() => (realLeadIds.has(lead.id) ? onTriggerCall(lead.id) : handleSimulateCall(lead.phone, lead.name))}
                         className="p-1.5 rounded-lg cursor-pointer transition hover:scale-110"
                         style={{ background: "rgba(249,115,22,0.2)", border: "1px solid rgba(249,115,22,0.4)" }}
                       >
@@ -1035,6 +1130,11 @@ export function FlashcardsGrid({
               </button>
             </div>
           </Flashcard3D>
+        </div>
+
+        {/* ─── CARD 5b: Apollo AI Leads ─── */}
+        <div className="lg:col-span-12">
+          <ApolloLeadsFlashcard />
         </div>
 
       </div>

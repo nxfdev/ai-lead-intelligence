@@ -13,6 +13,7 @@ import { GoogleSearchDiscoveryTool } from "./google-search";
 import { DirectoryDiscoveryTool } from "./directories";
 import { LinkedInDiscoveryTool } from "./linkedin";
 import { DuckDuckGoDiscoveryTool } from "./duckduckgo";
+import { ApolloDiscoveryTool } from "./apollo";
 import { dedupeLeads } from "./lib";
 import { SyntheticDiscoveryProvider } from "../services/synthetic-data";
 
@@ -60,6 +61,13 @@ const TOOL_DEFS: ToolDef[] = [
     requiresKey: true,
     isConfigured: () => Boolean(process.env.LINKEDIN_SCRAPE_URL),
   },
+  {
+    id: "apollo",
+    label: "Apollo.io",
+    instance: new ApolloDiscoveryTool(),
+    requiresKey: true,
+    isConfigured: () => Boolean(process.env.APOLLO_API_KEY),
+  },
 ];
 
 interface ToolRunRecord {
@@ -71,7 +79,7 @@ interface ToolRunRecord {
 const runRecord = new Map<string, ToolRunRecord | null>();
 
 function enabledIds(): string[] {
-  const raw = process.env.DISCOVERY_TOOLS || "duckduckgo,google-maps,directories,google-search,linkedin";
+  const raw = process.env.DISCOVERY_TOOLS || "duckduckgo,google-maps,directories,google-search,linkedin,apollo";
   return raw
     .split(",")
     .map((s) => s.trim().toLowerCase())

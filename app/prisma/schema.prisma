@@ -24,6 +24,7 @@ model Organization {
   calls             Call[]
   events            Event[]
   auditLogs         AuditLog[]
+  settings          Setting[]
 
   @@map("organizations")
 }
@@ -119,6 +120,7 @@ model Lead {
   website           String?
   location          String?
   category          String?
+  source            String?
   score             Int          @default(0)
   scoreComponents   Json?        @map("score_components")
   status            String       @default("DISCOVERED")
@@ -226,6 +228,22 @@ model ProcessedWebhookEvent {
   processedAt DateTime @default(now()) @map("processed_at")
 
   @@map("processed_webhook_events")
+}
+
+// ─── SETTINGS ───────────────────────────────────────────────
+
+model Setting {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  key            String
+  value          String
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, key])
+  @@index([organizationId])
+  @@map("settings")
 }
 
 model AuditLog {

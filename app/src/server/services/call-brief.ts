@@ -13,6 +13,8 @@ interface CallBriefInput {
   phone: string;
   location?: string;
   category?: string;
+  decisionMakerTitle?: string;
+  organization?: string;
   evidence: EvidenceItem[];
   hypothesis: string;
   callQuestions: string[];
@@ -51,7 +53,9 @@ export async function generateCallBrief(input: CallBriefInput): Promise<CallBrie
     businessContext: {
       clientDescription: input.clientDescription,
       targetBusiness: input.leadName,
-      category: input.category || "Dental Practice",
+      decisionMakerTitle: input.decisionMakerTitle,
+      organization: input.organization,
+      category: input.category || "Business",
       location: input.location || "Austin, TX area",
     },
     evidence: input.evidence,
@@ -81,7 +85,11 @@ export function briefToCalleTask(brief: CallBrief): string {
   const questionLines = brief.questions.map((q, i) => `${i + 1}. ${q}`).join("\n");
   const constraintLines = brief.constraints.map((c) => `- ${c}`).join("\n");
 
-  return `Call ${brief.target.name} at ${brief.target.phone}.
+  const persona = brief.businessContext.decisionMakerTitle
+    ? ` (${brief.businessContext.decisionMakerTitle}${brief.businessContext.organization ? ` at ${brief.businessContext.organization}` : ""})`
+    : "";
+
+  return `Call ${brief.target.name}${persona} at ${brief.target.phone}.
 
 Objective:
 ${brief.objective}

@@ -110,6 +110,7 @@ export async function runPipeline(taskId: string, organizationId: string): Promi
           website: raw.website,
           location: raw.location,
           category: raw.category,
+          source: raw.source,
           status: "DISCOVERED",
           qualification: "PENDING",
           decisionMaker: raw.decisionMaker,
@@ -334,12 +335,16 @@ export async function executeCall(
 
     const callQuestions = (criteriaRecord?.criteriaJson as Record<string, unknown>)?.callQuestions as string[] || [];
 
+    const profile = (lead.profileJson as Record<string, unknown> | null) || {};
+
     // Generate call brief
     const brief = await generateCallBrief({
       leadName: lead.name,
       phone: lead.phone,
       location: lead.location || undefined,
       category: lead.category || undefined,
+      decisionMakerTitle: (profile.title as string) || lead.decisionMaker || undefined,
+      organization: (profile.organization as string) || undefined,
       evidence: lead.evidence.map((e) => ({
         type: e.type as "OBSERVED" | "INFERRED" | "VERIFIED",
         claim: e.claim,
