@@ -1,0 +1,319 @@
+🚀 Starting CALL-E Pipeline Test
+
+================================================================================
+
+📞 Testing lead: Austin Smile Center
+------------------------------------------------------------
+
+1️⃣  Creating lead in database...
+   ℹ️  Lead already exists: 4ad4d6ed-9d0d-4ad6-a863-4248c2d6f643
+
+2️⃣  Adding evidence records...
+   ✅ Added 3 evidence items
+
+3️⃣  Generating call brief...
+   📋 Call Brief Generated:
+      Target: Austin Smile Center
+      Phone: +15551234567
+      Objective: Determine whether Austin Smile Center currently has difficulty handling inbound ...
+      Questions: 5
+      Constraints: 5
+
+4️⃣  Converting to CALL-E task...
+   📝 CALL-E Task:
+   --------------------------------------------------------
+   Call Austin Smile Center at +15551234567.
+   
+   Objective:
+   Determine whether Austin Smile Center currently has difficulty handling inbound calls and whether they would be interested in an AI-powered phone answering solution.
+   
+   Context:
+   - Dental Practice located in Austin, TX
+   - AI-powered receptionist and phone answering solution provider
+   
+   Evidence:
+   - Business has high call volume during morning hours
+   - Multiple reviews mention difficulty getting through by phone
+   
+   Hypothesis:
+   Austin Smile Center shows strong indicators of phone handling challenges based on customer reviews mentioning difficulty reaching the office. They likely need an AI receptionist solution to handle peak hours.
+   
+   Questions to ask:
+   1. Who currently handles incoming calls?
+   2. Do you experience missed calls during busy periods?
+   3. What happens with after-hours calls?
+   4. Are you currently considering any solutions to improve call handling?
+   5. Who would make the decision about adopting a new phone solution?
+   
+   Constraints:
+   - Do not make purchases or financial commitments
+   - Do not misrepresent identity
+   - Do not claim uncertain information as fact
+   - Be professional and respectful of the recipient's time
+   - If asked who you represent, provide honest information
+   
+   Return structured answers for each question asked.
+   --------------------------------------------------------
+
+5️⃣  Generating result schema...
+   📊 Schema fields: decision_maker_reached, need_confirmed, current_solution, pain_points, interest_level, next_action, additional_notes
+
+6️⃣  Simulating conversation flow...
+   ========================================================
+   🤖 Agent: Hello, is this Austin Smile Center? I'm calling from AI Lead Intelligence regarding your business's ability to handle customer calls.
+   👤 Lead:  Yes, this is the office manager speaking.
+   🤖 Agent: Great, thank you for taking my call. I'm researching how businesses manage inbound calls during busy periods. Could you tell me who typically handles incoming calls during your business hours?
+   👤 Lead:  We have a receptionist who handles most of the calls, but during busy mornings it can get overwhelming.
+   🤖 Agent: I understand. And when you're busy, what happens to the calls that come in? Do they go to voicemail, or is there a hold system?
+   👤 Lead:  Most go to voicemail, and we try to return them when we can, but honestly we miss quite a few.
+   🤖 Agent: That's actually very common. How many calls would you estimate you're missing during peak hours?
+   👤 Lead:  Probably 5-10 per day, especially between 8-11 AM when we're the busiest.
+   🤖 Agent: That's significant. What would happen if you had an automated system that could answer those calls, take messages, and even schedule appointments?
+   👤 Lead:  That would be incredible, honestly. We've been looking for a solution but haven't found the right fit.
+   🤖 Agent: Perfect. Could I get the best email address to send you some information about our AI-powered phone answering solution?
+   👤 Lead:  Sure, it's dr.mitchell@austinsmilecenter.com.
+   🤖 Agent: Excellent. Thank you so much for your time, Doctor. We'll be in touch within 24 hours with more details.
+   👤 Lead:  Sounds great, thank you!
+   ========================================================
+
+7️⃣  Generating structured call result...
+   📊 Structured Result:
+      Decision Maker Reached: ✅ Yes
+      Need Confirmed: ✅ Yes
+      Current Solution: Receptionist with voicemail fallback
+      Next Action: Schedule product demo with Dr. Sarah Mitchell
+      Notes: Confirmed Austin Smile Center misses 5-10 calls daily during peak hours. Decision maker expressed strong interest in AI solution.
+
+8️⃣  Synthesizing call result...
+   📝 Synthesis:
+      Qualification: QUALIFIED
+      Summary: Austin Smile Center is a qualified lead, with a confirmed need for an AI receptionist solution to handle peak hours, and expressed strong interest in the product.
+      Verified Facts: 3
+        ✓ Austin Smile Center misses 5-10 calls daily during peak hours
+        ✓ Decision maker reached and confirmed need
+        ✓ Decision maker expressed strong interest in AI solution
+      Next Action: Schedule product demo with Dr. Sarah Mitchell as planned
+
+9️⃣  Updating lead record...
+   ✅ Updated lead status: CALLED
+   ✅ Updated qualification: VERIFIED
+   ✅ Created call record: b95aa06b-b8c8-4763-8790-6da1cfcf70fa
+   ✅ Added 3 verified evidence items
+
+================================================================================
+
+📞 Testing lead: Pflugerville Dental Associates
+------------------------------------------------------------
+
+1️⃣  Creating lead in database...
+   ℹ️  Lead already exists: e00428e3-7f37-4922-9539-5b46acf2ebe3
+
+2️⃣  Adding evidence records...
+   ✅ Added 2 evidence items
+
+3️⃣  Generating call brief...
+   📋 Call Brief Generated:
+      Target: Pflugerville Dental Associates
+      Phone: +15559876543
+      Objective: Determine whether Pflugerville Dental Associates currently has difficulty handli...
+      Questions: 5
+      Constraints: 5
+
+4️⃣  Converting to CALL-E task...
+   📝 CALL-E Task:
+   --------------------------------------------------------
+   Call Pflugerville Dental Associates at +15559876543.
+   
+   Objective:
+   Determine whether Pflugerville Dental Associates currently has difficulty handling inbound calls and whether they would be interested in an AI-powered phone answering solution.
+   
+   Context:
+   - Dental Practice located in Pflugerville, TX
+   - AI-powered receptionist and phone answering solution provider
+   
+   Evidence:
+   - Extended hours (7AM-7PM) create coverage challenges
+   
+   Hypothesis:
+   Pflugerville Dental Associates has extended operating hours that create phone coverage gaps. Their recent receptionist job posting indicates they're actively seeking solutions for call handling.
+   
+   Questions to ask:
+   1. Who currently handles incoming calls?
+   2. Do you experience missed calls during busy periods?
+   3. What happens with after-hours calls?
+   4. Are you currently considering any solutions to improve call handling?
+   5. Who would make the decision about adopting a new phone solution?
+   
+   Constraints:
+   - Do not make purchases or financial commitments
+   - Do not misrepresent identity
+   - Do not claim uncertain information as fact
+   - Be professional and respectful of the recipient's time
+   - If asked who you represent, provide honest information
+   
+   Return structured answers for each question asked.
+   --------------------------------------------------------
+
+5️⃣  Generating result schema...
+   📊 Schema fields: decision_maker_reached, need_confirmed, current_solution, pain_points, interest_level, next_action, additional_notes
+
+6️⃣  Simulating conversation flow...
+   ========================================================
+   🤖 Agent: Hello, is this Pflugerville Dental Associates? I'm calling from AI Lead Intelligence regarding your business's ability to handle customer calls.
+   👤 Lead:  Yes, this is the office manager speaking.
+   🤖 Agent: Great, thank you for taking my call. I'm researching how businesses manage inbound calls during busy periods. Could you tell me who typically handles incoming calls during your business hours?
+   👤 Lead:  We have a receptionist who handles most of the calls, but during busy mornings it can get overwhelming.
+   🤖 Agent: I understand. And when you're busy, what happens to the calls that come in? Do they go to voicemail, or is there a hold system?
+   👤 Lead:  Most go to voicemail, and we try to return them when we can, but honestly we miss quite a few.
+   🤖 Agent: That's actually very common. How many calls would you estimate you're missing during peak hours?
+   👤 Lead:  Probably 5-10 per day, especially between 8-11 AM when we're the busiest.
+   🤖 Agent: That's significant. What would happen if you had an automated system that could answer those calls, take messages, and even schedule appointments?
+   👤 Lead:  That would be incredible, honestly. We've been looking for a solution but haven't found the right fit.
+   🤖 Agent: Perfect. Could I get the best email address to send you some information about our AI-powered phone answering solution?
+   👤 Lead:  Sure, it's dr.mitchell@austinsmilecenter.com.
+   🤖 Agent: Excellent. Thank you so much for your time, Doctor. We'll be in touch within 24 hours with more details.
+   👤 Lead:  Sounds great, thank you!
+   ========================================================
+
+7️⃣  Generating structured call result...
+   📊 Structured Result:
+      Decision Maker Reached: ✅ Yes
+      Need Confirmed: ✅ Yes
+      Current Solution: Receptionist with voicemail fallback
+      Next Action: Schedule product demo with Dr. Sarah Mitchell
+      Notes: Confirmed Pflugerville Dental Associates misses 5-10 calls daily during peak hours. Decision maker expressed strong interest in AI solution.
+
+8️⃣  Synthesizing call result...
+   📝 Synthesis:
+      Qualification: QUALIFIED
+      Summary: Pflugerville Dental Associates confirmed missing 5-10 calls daily and expressed strong interest in an AI solution.
+      Verified Facts: 4
+        ✓ Decision Maker Reached: YES
+        ✓ Need Confirmed: YES
+        ✓ Confirmed Pflugerville Dental Associates misses 5-10 calls daily during peak hours
+        ✓ Decision maker expressed strong interest in AI solution
+      Next Action: Schedule product demo with Dr. Sarah Mitchell
+
+9️⃣  Updating lead record...
+   ✅ Updated lead status: CALLED
+   ✅ Updated qualification: VERIFIED
+   ✅ Created call record: dca9bf29-c6a9-43c7-880b-1dab2229a4b9
+   ✅ Added 4 verified evidence items
+
+================================================================================
+
+📞 Testing lead: Westlake Dental Studio
+------------------------------------------------------------
+
+1️⃣  Creating lead in database...
+   ℹ️  Lead already exists: 7d5e6918-ed5e-4020-a141-764c645a09ba
+
+2️⃣  Adding evidence records...
+   ✅ Added 1 evidence items
+
+3️⃣  Generating call brief...
+   📋 Call Brief Generated:
+      Target: Westlake Dental Studio
+      Phone: +15554567890
+      Objective: Determine whether Westlake Dental Studio currently has difficulty handling inbou...
+      Questions: 5
+      Constraints: 5
+
+4️⃣  Converting to CALL-E task...
+   📝 CALL-E Task:
+   --------------------------------------------------------
+   Call Westlake Dental Studio at +15554567890.
+   
+   Objective:
+   Determine whether Westlake Dental Studio currently has difficulty handling inbound calls and whether they would be interested in an AI-powered phone answering solution.
+   
+   Context:
+   - Dental Practice located in Austin, TX
+   - AI-powered receptionist and phone answering solution provider
+   
+   Evidence:
+   - Small practice with limited staff
+   
+   Hypothesis:
+   Westlake Dental Studio is a small practice that may struggle with phone coverage during busy periods.
+   
+   Questions to ask:
+   1. Who currently handles incoming calls?
+   2. Do you experience missed calls during busy periods?
+   3. What happens with after-hours calls?
+   4. Are you currently considering any solutions to improve call handling?
+   5. Who would make the decision about adopting a new phone solution?
+   
+   Constraints:
+   - Do not make purchases or financial commitments
+   - Do not misrepresent identity
+   - Do not claim uncertain information as fact
+   - Be professional and respectful of the recipient's time
+   - If asked who you represent, provide honest information
+   
+   Return structured answers for each question asked.
+   --------------------------------------------------------
+
+5️⃣  Generating result schema...
+   📊 Schema fields: decision_maker_reached, need_confirmed, current_solution, pain_points, interest_level, next_action, additional_notes
+
+6️⃣  Simulating conversation flow...
+   ========================================================
+   🤖 Agent: Hello, is this Westlake Dental Studio? I'm calling from AI Lead Intelligence regarding your business's ability to handle customer calls.
+   👤 Lead:  Yes, this is the office manager speaking.
+   🤖 Agent: Great, thank you for taking my call. I'm researching how businesses manage inbound calls during busy periods. Could you tell me who typically handles incoming calls during your business hours?
+   👤 Lead:  We have a receptionist who handles most of the calls, but during busy mornings it can get overwhelming.
+   🤖 Agent: I understand. And when you're busy, what happens to the calls that come in? Do they go to voicemail, or is there a hold system?
+   👤 Lead:  Most go to voicemail, and we try to return them when we can, but honestly we miss quite a few.
+   🤖 Agent: That's actually very common. How many calls would you estimate you're missing during peak hours?
+   👤 Lead:  Probably 5-10 per day, especially between 8-11 AM when we're the busiest.
+   🤖 Agent: That's significant. What would happen if you had an automated system that could answer those calls, take messages, and even schedule appointments?
+   👤 Lead:  That would be incredible, honestly. We've been looking for a solution but haven't found the right fit.
+   🤖 Agent: Perfect. Could I get the best email address to send you some information about our AI-powered phone answering solution?
+   👤 Lead:  Sure, it's dr.mitchell@austinsmilecenter.com.
+   🤖 Agent: Excellent. Thank you so much for your time, Doctor. We'll be in touch within 24 hours with more details.
+   👤 Lead:  Sounds great, thank you!
+   ========================================================
+
+7️⃣  Generating structured call result...
+   📊 Structured Result:
+      Decision Maker Reached: ✅ Yes
+      Need Confirmed: ✅ Yes
+      Current Solution: Receptionist with voicemail fallback
+      Next Action: Schedule product demo with Dr. Sarah Mitchell
+      Notes: Confirmed Westlake Dental Studio misses 5-10 calls daily during peak hours. Decision maker expressed strong interest in AI solution.
+
+8️⃣  Synthesizing call result...
+   📝 Synthesis:
+      Qualification: QUALIFIED
+      Summary: Westlake Dental Studio is a qualified lead with a confirmed need for an AI solution, missing 5-10 calls daily during peak hours.
+      Verified Facts: 3
+        ✓ Decision Maker Reached: YES
+        ✓ Need Confirmed: YES
+        ✓ Westlake Dental Studio misses 5-10 calls daily during peak hours
+      Next Action: Schedule the product demo with Dr. Sarah Mitchell as planned
+
+9️⃣  Updating lead record...
+   ✅ Updated lead status: CALLED
+   ✅ Updated qualification: VERIFIED
+   ✅ Created call record: 7a19f3a5-eec4-4c69-a577-4cebe658cbf9
+   ✅ Added 3 verified evidence items
+
+================================================================================
+
+📊 PIPELINE TEST COMPLETE
+================================================================================
+
+📈 Results Summary:
+   Total Leads: 28
+   Leads with Calls: 3
+   Verified Leads: 3
+   Total Evidence Items: 93
+
+💡 What You Need to Provide:
+   1. OpenRouter API Key - Set OPENROUTER_API_KEY in .env
+   2. CALL-E API Key - Set CALL_E_API_KEY in .env (for live calls)
+   3. Set CALL_MODE=live in .env (default is synthetic)
+
+🚀 To run the live pipeline:
+   pnpm tsx scripts/test-calle-pipeline.ts
