@@ -1,9 +1,9 @@
 /**
- * Phone Agent — Synthetic + CALL-E Adapters
+ * Phone Agent — CALL-E Integration
  * 
  * Implements the PhoneAgent interface with:
- * - SyntheticPhoneAgent: 2-5s simulated calls with realistic results
- * - CallePhoneAgent: real CALL-E SDK integration
+ * - SyntheticPhoneAgent: simulated calls for testing
+ * - CallePhoneAgent: real calls via CALL-E SDK
  */
 
 import type { PhoneAgent, CreateCallInput, PhoneCallResult, CallStructuredResult } from "@/lib/types";
@@ -118,41 +118,38 @@ export class CallePhoneAgent implements PhoneAgent {
   private apiKey: string;
 
   constructor() {
-    this.apiKey = process.env.CALL_E_API_KEY || "";
+    this.apiKey = process.env.CALLE_API_KEY || "";
     if (!this.apiKey) {
-      console.warn("CALL_E_API_KEY not set — CALL-E calls will fail");
+      console.warn("CALLE_API_KEY not set — CALL-E calls will fail");
     }
   }
 
   async createCall(input: CreateCallInput): Promise<PhoneCallResult> {
-    // Dynamic import to avoid issues when @call-e/calle isn't installed
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { CallE } = await (new Function('return import("@call-e/calle")')() as Promise<any>);
-      const client = new CallE({ apiKey: this.apiKey });
-
-      const created = await client.calls.create(
-        {
-          task: input.task,
-          recipients: [
-            { phones: [input.phone] },
-          ],
-          resultSchema: input.resultSchema,
-        },
-        { idempotencyKey: input.idempotencyKey }
-      );
-
-      // Wait for result (with timeout)
-      const completed = await client.calls.waitForResult(created.id, {
-        timeoutMs: 120_000,
-        intervalMs: 2_000,
+      const { CalleClient } = await import("@call-e/calle");
+      const client = new CalleClient({
+        apiKey: this.apiKey,
+        baseUrl: "https://api.heycall-e.com",
       });
 
+      // Create and wait for call completion
+      const call = await client.calls.createAndWait(
+        {
+          task: input.task,
+          recipients: [{ phones: [input.phone] }],
+          resultSchema: input.resultSchema as Record<string, unknown> | undefined,
+        },
+        {
+          timeoutMs: 120_000,
+          intervalMs: 2_000,
+        }
+      );
+
       return {
-        id: completed.id,
-        status: "completed",
-        structuredResult: completed.result as CallStructuredResult | undefined,
-        duration: undefined, // CALL-E may not provide duration directly
+        id: call.id,
+        status: call.status === "completed" ? "completed" : "failed",
+        structuredResult: call.structuredResult as CallStructuredResult | undefined,
+        duration: undefined,
       };
     } catch (error) {
       console.error("CALL-E call failed:", error);
@@ -165,15 +162,17 @@ export class CallePhoneAgent implements PhoneAgent {
 
   async getCall(id: string): Promise<PhoneCallResult> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { CallE } = await (new Function('return import("@call-e/calle")')() as Promise<any>);
-      const client = new CallE({ apiKey: this.apiKey });
+      const { CalleClient } = await import("@call-e/calle");
+      const client = new CalleClient({
+        apiKey: this.apiKey,
+        baseUrl: "https://api.heycall-e.com",
+      });
 
       const call = await client.calls.get(id);
       return {
         id: call.id,
         status: call.status === "completed" ? "completed" : "in_progress",
-        structuredResult: call.result as CallStructuredResult | undefined,
+        structuredResult: call.structuredResult as CallStructuredResult | undefined,
       };
     } catch (error) {
       console.error("CALL-E getCall failed:", error);

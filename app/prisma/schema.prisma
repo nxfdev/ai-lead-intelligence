@@ -242,3 +242,56 @@ model AuditLog {
   @@index([action])
   @@map("audit_logs")
 }
+
+// ─── PRODUCT & PIPELINE ─────────────────────────────────────
+
+model Product {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String
+  description    String
+  targetAudience String?  @map("target_audience")
+  features       Json?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  questions  ProductQuestion[]
+  callLogs   LeadCallLog[]
+
+  @@index([organizationId])
+  @@map("products")
+}
+
+model ProductQuestion {
+  id        String   @id @default(uuid())
+  productId String   @map("product_id")
+  question  String
+  category  String?
+  order     Int      @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_questions")
+}
+
+model LeadCallLog {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  productId      String?  @map("product_id")
+  leadName       String   @map("lead_name")
+  leadPhone      String   @map("lead_phone")
+  leadInfo       Json?    @map("lead_info")
+  customQuestions Json?   @map("custom_questions")
+  callId         String?  @map("call_id")
+  transcript     String?
+  summary        String?
+  status         String   @default("PENDING")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([productId])
+  @@index([status])
+  @@map("lead_call_logs")
+}

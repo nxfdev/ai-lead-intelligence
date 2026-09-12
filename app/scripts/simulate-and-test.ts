@@ -142,7 +142,7 @@ async function runTestSuite() {
 
   const brief = await generateCallBrief({
     leadName: "Austin Smile Center",
-    phone: "+15125551001",
+    phone: "+15551234567",
     location: "Austin, TX",
     category: "Dental Practice",
     evidence: evidenceList,
@@ -164,7 +164,7 @@ async function runTestSuite() {
   const callExecution = await phoneAgent.createCall({
     leadId: "test_lead_id",
     organizationId: DEFAULT_ORG_ID,
-    phone: "+15125551001",
+    phone: "+15551234567",
     task: calleTaskPrompt,
     resultSchema: generateResultSchema(),
     idempotencyKey: `test_call_${Date.now()}`,

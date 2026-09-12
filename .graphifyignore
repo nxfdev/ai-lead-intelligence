@@ -1,0 +1,12 @@
+graphify-out/
+app/public/
+pipeline_result.txt
+app/output.txt
+app/leads.txt
+app/leads_output.txt
+app/db_output.txt
+app/pipeline_out.txt
+app/pipeline_output.txt
+app/psout.txt
+app/result.txt
+app/tserrors.txt
