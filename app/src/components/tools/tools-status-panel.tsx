@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MapPin, Search, Globe, Link2, Building2, Loader2 } from "lucide-react";
+import { MapPin, Search, Globe, Link2, Building2 } from "lucide-react";
 
 interface ToolStatus {
   id: string;
@@ -28,8 +28,6 @@ function iconFor(id: string) {
 
 export function ToolsStatusPanel() {
   const [tools, setTools] = useState<ToolStatus[]>([]);
-  const [isScraping, setIsScraping] = useState(false);
-  const [scrapeResult, setScrapeResult] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -41,34 +39,6 @@ export function ToolsStatusPanel() {
       .catch(() => {});
     return () => controller.abort();
   }, []);
-
-  const handleScrape = async () => {
-    setIsScraping(true);
-    setScrapeResult(null);
-    try {
-      const res = await fetch("/api/leads/scrape", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query: "AI receptionist phone answering service",
-          location: "Texas",
-          platforms: ["google", "yelp"],
-          maxResults: 20,
-          requirePhone: true,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setScrapeResult(`Found ${data.data.leadsStored} new leads with phone numbers`);
-      } else {
-        setScrapeResult(`Error: ${data.error}`);
-      }
-    } catch {
-      setScrapeResult("Failed to scrape leads");
-    } finally {
-      setIsScraping(false);
-    }
-  };
 
   if (tools.length === 0) return null;
 
@@ -102,23 +72,6 @@ export function ToolsStatusPanel() {
           {t.lastRun && <span className="text-[#8f86a8]">{t.lastRun.discovered}</span>}
         </div>
       ))}
-      <button
-        onClick={handleScrape}
-        disabled={isScraping}
-        className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#6c5ce7] hover:bg-[#5b4cdb] disabled:opacity-50 text-white text-[10px] font-medium transition-colors ml-2"
-      >
-        {isScraping ? (
-          <>
-            <Loader2 className="w-3 h-3 animate-spin" />
-            Scraping...
-          </>
-        ) : (
-          "Scrape Leads"
-        )}
-      </button>
-      {scrapeResult && (
-        <span className="text-[10px] text-[#34f5c5] ml-2">{scrapeResult}</span>
-      )}
     </div>
   );
 }

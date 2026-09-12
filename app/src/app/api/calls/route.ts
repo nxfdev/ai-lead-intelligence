@@ -42,7 +42,6 @@ export async function GET() {
           ? {
               summary: call.result.summary,
               structuredResult: call.result.structuredResult,
-              transcript: call.result.transcript,
               qualification: call.result.qualifiedResult,
               confidence: call.result.confidence,
             }

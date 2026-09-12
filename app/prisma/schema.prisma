@@ -116,14 +116,9 @@ model Lead {
   taskId            String?      @map("task_id")
   name              String
   phone             String?
-  email             String?
   website           String?
   location          String?
   category          String?
-  businessType      String?      @map("business_type")
-  discoveredFrom    String?      @map("discovered_from")
-  discoveredUrl     String?      @map("discovered_url")
-  socialProfiles    Json?        @map("social_profiles")
   score             Int          @default(0)
   scoreComponents   Json?        @map("score_components")
   status            String       @default("DISCOVERED")
@@ -145,7 +140,6 @@ model Lead {
   @@index([taskId])
   @@index([score])
   @@index([qualification])
-  @@index([discoveredFrom])
   @@map("leads")
 }
 
@@ -164,23 +158,6 @@ model Evidence {
   @@index([leadId])
   @@index([type])
   @@map("evidence")
-}
-
-model ScrapingJob {
-  id             String   @id @default(uuid())
-  organizationId String   @map("organization_id")
-  productQuery   String   @map("product_query")
-  platforms      Json
-  status         String   @default("PENDING")
-  leadsFound     Int      @default(0)
-  leadsWithPhone Int      @default(0)
-  startedAt      DateTime? @map("started_at")
-  completedAt    DateTime? @map("completed_at")
-  createdAt      DateTime @default(now()) @map("created_at")
-
-  @@index([organizationId])
-  @@index([status])
-  @@map("scraping_jobs")
 }
 
 // ─── CALLS & RESULTS ────────────────────────────────────────
@@ -214,7 +191,6 @@ model CallResult {
   callId           String   @unique @map("call_id")
   structuredResult Json?    @map("structured_result")
   summary          String?
-  transcript       String?
   confidence       Float?
   qualifiedResult  String?  @map("qualified_result")
   createdAt        DateTime @default(now()) @map("created_at")

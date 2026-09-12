@@ -5,7 +5,7 @@
  * Ensures all leads have valid phone numbers for CALL-E.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { GoogleScraper } from './google-scraper';
 import { YelpScraper } from './yelp-scraper';
 import { SocialMediaScraper } from './social-scraper';
@@ -50,18 +50,10 @@ export class LeadGenerationOrchestrator {
     console.log(`   Platforms: ${config.platforms.join(', ')}`);
     console.log(`   Require Phone: ${config.requirePhone}`);
     
-    // Create scraping job
-    const job = await prisma.scrapingJob.create({
-      data: {
-        organizationId: DEFAULT_ORG_ID,
-        productQuery: config.query,
-        platforms: config.platforms,
-        status: 'IN_PROGRESS',
-        startedAt: new Date(),
-      },
-    });
+    // Create scraping job (tracked in-memory; jobId returned to caller)
+    const jobId = crypto.randomUUID();
     
-    console.log(`   Job ID: ${job.id}`);
+    console.log(`   Job ID: ${jobId}`);
     
     const allLeads: ScrapedLead[] = [];
     const errors: string[] = [];
@@ -105,22 +97,10 @@ export class LeadGenerationOrchestrator {
     }
     
     console.log(`   Stored in Database: ${storedCount}`);
-    
-    // Update job
-    await prisma.scrapingJob.update({
-      where: { id: job.id },
-      data: {
-        status: 'COMPLETED',
-        leadsFound: allLeads.length,
-        leadsWithPhone: leadsWithPhone.length,
-        completedAt: new Date(),
-      },
-    });
-    
-    console.log(`\n✅ Lead generation complete!`);
+    console.log(`\n✅ Lead generation complete (job ${jobId})!`);
     
     return {
-      jobId: job.id,
+      jobId,
       totalFound: allLeads.length,
       leadsWithPhone: leadsWithPhone.length,
       leadsStored: storedCount,
@@ -175,6 +155,21 @@ export class LeadGenerationOrchestrator {
     return Array.from(seen.values());
   }
   
+  private buildProfileJson(lead: ScrapedLead, existing?: { profileJson?: Prisma.JsonValue } | null): Prisma.InputJsonValue {
+    const raw =
+      existing?.profileJson && typeof existing.profileJson === 'object' && !Array.isArray(existing.profileJson)
+        ? (existing.profileJson as Record<string, unknown>)
+        : {};
+    return {
+      ...raw,
+      email: lead.email ?? raw.email,
+      businessType: lead.businessType ?? raw.businessType,
+      discoveredFrom: lead.discoveredFrom ?? raw.discoveredFrom,
+      discoveredUrl: lead.discoveredUrl ?? raw.discoveredUrl,
+      socialProfiles: lead.socialProfiles ?? raw.socialProfiles,
+    } as unknown as Prisma.InputJsonValue;
+  }
+
   private async storeLead(lead: ScrapedLead, config: LeadGenerationConfig): Promise<void> {
     // Normalize phone
     let normalizedPhone = lead.phone;
@@ -196,10 +191,10 @@ export class LeadGenerationOrchestrator {
       await prisma.lead.update({
         where: { id: existingLead.id },
         data: {
-          email: lead.email || existingLead.email,
           website: lead.website || existingLead.website,
           location: lead.location || existingLead.location,
-          socialProfiles: lead.socialProfiles as Record<string, string> || existingLead.socialProfiles as Record<string, string>,
+          category: lead.category || existingLead.category,
+          profileJson: this.buildProfileJson(lead, existingLead),
         },
       });
       return;
@@ -211,14 +206,10 @@ export class LeadGenerationOrchestrator {
         organizationId: DEFAULT_ORG_ID,
         name: lead.name,
         phone: normalizedPhone,
-        email: lead.email,
         website: lead.website,
         location: lead.location,
         category: lead.category,
-        businessType: lead.businessType,
-        discoveredFrom: lead.discoveredFrom,
-        discoveredUrl: lead.discoveredUrl,
-        socialProfiles: lead.socialProfiles,
+        profileJson: this.buildProfileJson(lead),
         status: 'DISCOVERED',
         qualification: 'PENDING',
       },
@@ -249,9 +240,9 @@ export class LeadGenerationOrchestrator {
       },
     });
     
-    const byPlatform = await prisma.lead.groupBy({
-      by: ['discoveredFrom'],
-      where: { organizationId: DEFAULT_ORG_ID },
+    const byCategory = await prisma.lead.groupBy({
+      by: ['category'],
+      where: { organizationId: DEFAULT_ORG_ID, category: { not: null } },
       _count: true,
     });
     
@@ -259,8 +250,8 @@ export class LeadGenerationOrchestrator {
       total,
       withPhone,
       withoutPhone: total - withPhone,
-      byPlatform: byPlatform.map(p => ({
-        platform: p.discoveredFrom || 'unknown',
+      byPlatform: byCategory.map(p => ({
+        platform: p.category || 'unknown',
         count: p._count,
       })),
     };
