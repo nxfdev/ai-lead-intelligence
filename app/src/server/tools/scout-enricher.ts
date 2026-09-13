@@ -150,7 +150,7 @@ export async function crawlWebsiteForLead(websiteUrl: string): Promise<{
           if (extractDomain(fullUrl) === cleanDomain && !aboutLinks.includes(fullUrl)) {
             aboutLinks.push(fullUrl);
           }
-        } catch {}
+        } catch { }
       }
     });
 
@@ -175,9 +175,9 @@ export async function crawlWebsiteForLead(websiteUrl: string): Promise<{
         if (match && match[1]) {
           decisionMakerCandidate = match[1].trim();
         }
-      } catch {}
+      } catch { }
     }
-  } catch {}
+  } catch { }
 
   // Filter emails belonging to the domain first
   const domainEmails = Array.from(emails).filter((e) => e.endsWith(`@${cleanDomain}`));
@@ -220,7 +220,7 @@ export async function searchSocialAccountsForCompany(
         profiles.push({ platform: "youtube", url: href });
       }
     });
-  } catch {}
+  } catch { }
 
   return profiles;
 }

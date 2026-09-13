@@ -1,38 +1,41 @@
 "use client";
 
-import { useState } from "react";
-import { CallLogPanel } from "@/components/calls/call-log-panel";
-import { LeadDashboardPanel } from "@/components/leads/lead-dashboard-panel";
-import { ChatPanel } from "@/components/chat/chat-panel";
-import { DashboardHeader } from "@/components/dashboard/header";
-import { ToolsStatusPanel } from "@/components/tools/tools-status-panel";
+import React, { useState } from "react";
+import { HeroExperience } from "@/components/dial-o/hero-experience";
+import { WalkthroughSection } from "@/components/dial-o/walkthrough-section";
+import { AboutArchitectureSection } from "@/components/dial-o/about-architecture-section";
+import { ConsoleSection } from "@/components/dial-o/console-section";
+import { SignInModal } from "@/components/dial-o/sign-in-modal";
 
-export default function DashboardPage() {
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
-  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
-  const [chatActive, setChatActive] = useState(false);
+export default function DialOMainPage() {
+  const [isSignInOpen, setIsSignInOpen] = useState(false);
+
+  const handleExploreConsole = () => {
+    const consoleElem = document.getElementById("console");
+    if (consoleElem) {
+      consoleElem.scrollIntoView({ behavior: "smooth" });
+    }
+  };
 
   return (
-    <div className="h-screen flex flex-col">
-      <DashboardHeader
-        activeTaskId={activeTaskId}
-        onTaskCreated={(taskId) => setActiveTaskId(taskId)}
+    <main className="w-full bg-black text-white selection:bg-[#00FFFF] selection:text-black">
+      {/* Sign In Modal */}
+      <SignInModal isOpen={isSignInOpen} onClose={() => setIsSignInOpen(false)} />
+
+      {/* Page 1 (Hero) & Page 2 (Call Reveal) — Scroll-Scrubbed Cinematic Experience */}
+      <HeroExperience
+        onOpenSignIn={() => setIsSignInOpen(true)}
+        onExploreConsole={handleExploreConsole}
       />
-      <ToolsStatusPanel />
-      <div className={`dashboard-grid flex-1 ${chatActive ? "chat-active" : ""}`}>
-        <CallLogPanel onSelectLead={(leadId) => setSelectedLeadId(leadId)} />
-        <LeadDashboardPanel
-          taskId={activeTaskId}
-          selectedLeadId={selectedLeadId}
-          onSelectLead={(leadId) => setSelectedLeadId(leadId)}
-        />
-        <ChatPanel
-          taskId={activeTaskId}
-          selectedLeadId={selectedLeadId}
-          onTaskCreated={(taskId) => setActiveTaskId(taskId)}
-          onActive={() => setChatActive(true)}
-        />
-      </div>
-    </div>
+
+      {/* Page 3 — Video Walkthrough (Cyan Visual Field & Orange Step Cards) */}
+      <WalkthroughSection />
+
+      {/* Page 4 — About + Architecture (Tan / Orange Split & System Pipeline) */}
+      <AboutArchitectureSection />
+
+      {/* Page 5 — The Console (The Destination / Payoff: Call Logs, Lead Intelligence, Copilot) */}
+      <ConsoleSection />
+    </main>
   );
 }

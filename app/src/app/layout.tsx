@@ -1,18 +1,14 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-import { AIBackground } from "@/components/ai-background";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
 
 export const metadata: Metadata = {
-  title: "LeadIntel — AI Lead Intelligence & CALL-E Platform",
+  title: "DIAL O — Lead Intelligence Before Outreach",
   description:
-    "AI-powered lead research, evidence-based scoring, and phone qualification through CALL-E.",
+    "Decides which calls deserve to happen in the first place. AI lead intelligence, evidence synthesis, and CALL-E phone qualification.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
@@ -21,9 +17,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="font-sans antialiased bg-[#06030f] text-[#f4f0ff]">
-        <AIBackground />
+    <html lang="en" className="dark">
+      <body className="bg-black text-white antialiased font-modular selection:bg-[#00FFFF] selection:text-black">
         <Providers>{children}</Providers>
       </body>
     </html>
