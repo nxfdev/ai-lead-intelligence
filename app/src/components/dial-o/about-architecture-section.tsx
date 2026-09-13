@@ -166,20 +166,21 @@ export function AboutArchitectureSection() {
         <div
           id="architecture"
           className="bg-[#FF751F] text-black flex flex-col justify-between dial-grid-orange"
-          style={{ padding: "64px" }}
+          style={{ padding: "64px 28px 64px 28px" }}
         >
           <div>
-            {/* Header — ARCHITECTURE @ 144px */}
+            {/* Header — ARCHITECTURE on ONE line */}
             <h2
               className="font-black uppercase font-modular text-black"
               style={{
-                fontSize: "clamp(72px, 9vw, 144px)",
-                letterSpacing: "0.06em",
+                fontSize: "clamp(34px, 5.1vw, 130px)",
+                letterSpacing: "0.02em",
                 lineHeight: 0.9,
                 marginBottom: "32px",
+                whiteSpace: "nowrap",
               }}
             >
-              ARCHI<br />TECTURE
+              ARCHITECTURE
             </h2>
 
             {/* Top Black Box: HOW ARE WE */}

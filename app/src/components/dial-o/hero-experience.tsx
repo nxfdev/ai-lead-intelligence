@@ -20,6 +20,13 @@ export function HeroExperience({ onOpenSignIn, onExploreConsole }: HeroExperienc
   const page1Opacity = Math.max(0, Math.min(1, (0.45 - scrollProgress) / 0.2));
   const page2Opacity = Math.max(0, Math.min(1, (scrollProgress - 0.48) / 0.25));
 
+  // Terminal editorial headline — stays large on tall screens but is
+  // capped by a height-fit formula so the panels always clear the
+  // lower-centre CTA band. min() formulas are evaluated by the browser as
+  // one calc expression, so no nesting.
+  const terminalHeadlineSize =
+    "clamp(38px, min(8.5vh, calc((100vh - 552px) / 4.6)), 150px)";
+
   return (
     <section id="hero" className="relative w-full">
       {/* 230vh total height creates a comfortable, controlled pinning distance */}
@@ -27,17 +34,18 @@ export function HeroExperience({ onOpenSignIn, onExploreConsole }: HeroExperienc
 
         {/* ══════════════════════════════════════════════════════════════
             TOP NAVIGATION BAR
-            Logo: 144px | Nav items: 70px
+            Logo: 144px, left-aligned (mirror of previous right position)
+            Nav items: 70px
             ══════════════════════════════════════════════════════════════ */}
         <header
           className="w-full flex items-center justify-between z-30 pointer-events-auto"
           style={{ padding: "32px 64px 0 64px" }}
         >
-          {/* DIAL O Logo — positioned to right side matching PDF reference (over the dialer area) */}
+          {/* DIAL O Logo — left side, same offset from the left edge it previously had from the right */}
           <a
             href="#hero"
             className="flex items-center gap-3 transition-opacity hover:opacity-90"
-            style={{ marginLeft: "auto", marginRight: "0" }}
+            style={{ marginLeft: "0", marginRight: "auto" }}
             aria-label="DIAL O - Home"
           >
             <DialOLogo size="hero" variant="hero" />
@@ -77,27 +85,25 @@ export function HeroExperience({ onOpenSignIn, onExploreConsole }: HeroExperienc
 
         {/* ══════════════════════════════════════════════════════════════
             PAGE 1 CONTENT (Active during first ~45% of scroll)
-            Left: Sharp Rotary Dialer in video
-            Right: Black Terminal with "EVERY LEAD QUALIFIED DESERVES A SHOT"
+            Left 50%: Empty — Sharp Rotary Dialer video dominates
+            Right 50%: Black Terminal — flush to the RIGHT viewport edge
             ══════════════════════════════════════════════════════════════ */}
         <div
-          className="absolute inset-0 flex flex-col justify-center pointer-events-none"
+          className="absolute inset-0 flex pointer-events-none"
           style={{
-            paddingLeft: "4vw",
-            paddingRight: "4vw",
-            paddingTop: "220px",
+            paddingTop: "170px",
+            paddingBottom: "200px",
             opacity: page1Opacity,
             visibility: page1Opacity > 0.01 ? "visible" : "hidden",
             pointerEvents: page1Opacity > 0.6 ? "auto" : "none",
           }}
         >
-          <div className="w-full max-w-none grid grid-cols-12 items-center gap-8">
-            {/* Left 6 cols: Empty — rotary dialer video dominates */}
-            <div className="col-span-6" />
+          <div className="w-full h-full grid grid-cols-2 gap-0 items-stretch">
+            {/* Left 50%: Empty — rotary dialer video dominates */}
+            <div />
 
-            {/* Right 6 cols: Terminal Panel */}
-            <div className="col-span-6 flex flex-col items-start">
-              {/* Terminal Panel — major structural element, ~50% of right area */}
+            {/* Right 50%: Terminal Panel — major structural half, flush to right edge */}
+            <div className="flex items-center">
               <div
                 className="w-full bg-black/95 shadow-[0_16px_60px_rgba(0,0,0,0.9)]"
                 style={{
@@ -122,11 +128,11 @@ export function HeroExperience({ onOpenSignIn, onExploreConsole }: HeroExperienc
                   </span>
                 </div>
 
-                {/* Editorial Headline — Hero Statement @ 180px */}
+                {/* Editorial Headline — Hero Statement */}
                 <h1
                   className="font-black uppercase font-modular select-none"
                   style={{
-                    fontSize: "clamp(80px, 8vw, 180px)",
+                    fontSize: terminalHeadlineSize,
                     lineHeight: 0.92,
                     letterSpacing: "0.04em",
                     margin: 0,
@@ -139,67 +145,78 @@ export function HeroExperience({ onOpenSignIn, onExploreConsole }: HeroExperienc
                   <span style={{ display: "block", color: "#EFCD5E" }}>A SHOT</span>
                 </h1>
               </div>
-
-              {/* EXPLORE CONSOLE CTA — 64px text, centered under terminal */}
-              <div className="mt-10 w-full flex justify-center">
-                <button
-                  onClick={onExploreConsole}
-                  className="animate-float-subtle font-black uppercase font-modular"
-                  style={{
-                    fontSize: "64px",
-                    letterSpacing: "0.12em",
-                    lineHeight: 1,
-                    backgroundColor: "#EFCD5E",
-                    color: "#000000",
-                    borderRadius: "9999px",
-                    padding: "20px 64px",
-                    border: "2px solid rgba(0,0,0,0.2)",
-                    boxShadow: "0 6px 32px rgba(239,205,94,0.35)",
-                    cursor: "pointer",
-                    transition: "all 0.24s cubic-bezier(0.16, 1, 0.3, 1)",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    whiteSpace: "nowrap",
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.05)";
-                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#F8DA76";
-                    (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 10px 48px rgba(239,205,94,0.5)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.transform = "";
-                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#EFCD5E";
-                    (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 6px 32px rgba(239,205,94,0.35)";
-                  }}
-                >
-                  EXPLORE CONSOLE
-                </button>
-              </div>
             </div>
           </div>
         </div>
 
         {/* ══════════════════════════════════════════════════════════════
+            EXPLORE CONSOLE CTA — 64px text, horizontally centered at 50% of
+            viewport, placed in the LOWER-CENTRE "mouth" of the composition
+            ══════════════════════════════════════════════════════════════ */}
+        <div
+          className="absolute left-1/2 z-30 pointer-events-auto"
+          style={{
+            bottom: "max(40px, 13vh)",
+            transform: "translateX(-50%)",
+            opacity: page1Opacity,
+            visibility: page1Opacity > 0.01 ? "visible" : "hidden",
+            pointerEvents: page1Opacity > 0.6 ? "auto" : "none",
+          }}
+        >
+          <button
+            onClick={onExploreConsole}
+            className="animate-float-subtle font-black uppercase font-modular"
+            style={{
+              fontSize: "64px",
+              letterSpacing: "0.12em",
+              lineHeight: 1,
+              backgroundColor: "#EFCD5E",
+              color: "#000000",
+              borderRadius: "9999px",
+              padding: "20px 64px",
+              border: "2px solid rgba(0,0,0,0.2)",
+              boxShadow: "0 6px 32px rgba(239,205,94,0.35)",
+              cursor: "pointer",
+              transition: "all 0.24s cubic-bezier(0.16, 1, 0.3, 1)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              whiteSpace: "nowrap",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.05)";
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#F8DA76";
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 10px 48px rgba(239,205,94,0.5)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.transform = "";
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#EFCD5E";
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 6px 32px rgba(239,205,94,0.35)";
+            }}
+          >
+            EXPLORE CONSOLE
+          </button>
+        </div>
+
+        {/* ══════════════════════════════════════════════════════════════
             PAGE 2 CONTENT (Active during later ~50% of scroll)
-            Left: Black Terminal with "SO WE CALL THEM FOR YOU"
-            Right: Sharp Telephone Receiver in video
+            Left 50%: Black Terminal — flush to the LEFT viewport edge
+            Right 50%: Empty — Sharp Telephone Receiver video dominates
             ══════════════════════════════════════════════════════════════ */}
         <div
           id="call-reveal"
-          className="absolute inset-0 flex flex-col justify-center pointer-events-none"
+          className="absolute inset-0 flex pointer-events-none"
           style={{
-            paddingLeft: "4vw",
-            paddingRight: "4vw",
-            paddingTop: "200px",
+            paddingTop: "170px",
+            paddingBottom: "140px",
             opacity: page2Opacity,
             visibility: page2Opacity > 0.01 ? "visible" : "hidden",
             pointerEvents: page2Opacity > 0.6 ? "auto" : "none",
           }}
         >
-          <div className="w-full max-w-none grid grid-cols-12 items-center gap-8">
-            {/* Left 6 cols: Black Terminal — "SO WE CALL THEM FOR YOU" */}
-            <div className="col-span-6 flex flex-col items-start">
+          <div className="w-full h-full grid grid-cols-2 gap-0 items-stretch">
+            {/* Left 50%: Terminal Panel — major structural half, flush to left edge */}
+            <div className="flex items-center">
               <div
                 className="w-full bg-black/95 shadow-[0_16px_60px_rgba(0,0,0,0.9)]"
                 style={{
@@ -224,11 +241,11 @@ export function HeroExperience({ onOpenSignIn, onExploreConsole }: HeroExperienc
                   </span>
                 </div>
 
-                {/* Statement Text — 180px */}
+                {/* Statement Text */}
                 <div
                   className="font-black uppercase font-modular select-none"
                   style={{
-                    fontSize: "clamp(80px, 8vw, 180px)",
+                    fontSize: terminalHeadlineSize,
                     lineHeight: 0.92,
                     letterSpacing: "0.04em",
                   }}
@@ -255,8 +272,8 @@ export function HeroExperience({ onOpenSignIn, onExploreConsole }: HeroExperienc
               </div>
             </div>
 
-            {/* Right 6 cols: Empty — telephone receiver video dominates */}
-            <div className="col-span-6" />
+            {/* Right 50%: Empty — telephone receiver video dominates */}
+            <div />
           </div>
         </div>
 

@@ -11,15 +11,13 @@ interface HeroVideoProps {
 export function HeroVideo({ onProgress, className = "", children }: HeroVideoProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const rafId = useRef<number | null>(null);
-  const lastTargetTime = useRef<number>(0);
-  const isSeeking = useRef<boolean>(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
-  const [duration, setDuration] = useState(10.67);
 
-  // Sync scroll to video currentTime
+  // Report scroll progress through the hero so the Page 1 → Page 2 content
+  // cross-fades. This NEVER touches video playback — the video plays
+  // continuously and independently of scrolling.
   const handleScroll = useCallback(() => {
-    if (!containerRef.current || !videoRef.current) return;
+    if (!containerRef.current) return;
 
     const container = containerRef.current;
     const rect = container.getBoundingClientRect();
@@ -35,42 +33,28 @@ export function HeroVideo({ onProgress, className = "", children }: HeroVideoPro
     if (onProgress) {
       onProgress(progress);
     }
-
-    const video = videoRef.current;
-    const effectiveDuration = video.duration && !isNaN(video.duration) ? video.duration : duration;
-    const targetTime = progress * effectiveDuration;
-
-    lastTargetTime.current = targetTime;
-
-    if (!rafId.current) {
-      rafId.current = requestAnimationFrame(() => {
-        if (videoRef.current && Math.abs(videoRef.current.currentTime - lastTargetTime.current) > 0.03) {
-          try {
-            videoRef.current.currentTime = lastTargetTime.current;
-          } catch {
-            // Browser might throw if video not completely loaded yet
-          }
-        }
-        rafId.current = null;
-      });
-    }
-  }, [duration, onProgress]);
+  }, [onProgress]);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const onMetadata = () => {
-      if (video.duration && !isNaN(video.duration)) {
-        setDuration(video.duration);
-      }
       setIsVideoReady(true);
-      // Ensure initial frame is queued at 0
-      video.currentTime = 0.01;
     };
 
     const onCanPlay = () => {
       setIsVideoReady(true);
+    };
+
+    const startPlayback = () => {
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // Autoplay may be temporarily blocked by the browser; the
+          // interaction handlers below will resume it.
+        });
+      }
     };
 
     video.addEventListener("loadedmetadata", onMetadata);
@@ -80,10 +64,19 @@ export function HeroVideo({ onProgress, className = "", children }: HeroVideoPro
       onMetadata();
     }
 
+    // Continuous cinematic background playback
+    startPlayback();
+
+    // Some browsers block autoplay until the user first interacts.
+    // A single pointer/key interaction resumes playback.
+    const resumeOnInteraction = () => startPlayback();
+    window.addEventListener("pointerdown", resumeOnInteraction, { once: true });
+    window.addEventListener("keydown", resumeOnInteraction, { once: true });
+
     window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("resize", handleScroll, { passive: true });
 
-    // Initial check
+    // Initial progress check
     handleScroll();
 
     return () => {
@@ -91,9 +84,8 @@ export function HeroVideo({ onProgress, className = "", children }: HeroVideoPro
       video.removeEventListener("canplay", onCanPlay);
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleScroll);
-      if (rafId.current) {
-        cancelAnimationFrame(rafId.current);
-      }
+      window.removeEventListener("pointerdown", resumeOnInteraction);
+      window.removeEventListener("keydown", resumeOnInteraction);
     };
   }, [handleScroll]);
 
@@ -104,8 +96,10 @@ export function HeroVideo({ onProgress, className = "", children }: HeroVideoPro
         <video
           ref={videoRef}
           src="/video/dial-o-hero.mp4"
-          playsInline
+          autoPlay
           muted
+          loop
+          playsInline
           preload="auto"
           className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none"
           style={{
